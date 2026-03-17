@@ -117,8 +117,8 @@ export default function GlobalChart({ series }: { series: DataPoint[] }) {
               fontSize: 12,
               fontFamily: "var(--font-dm-sans)",
             }}
-            labelFormatter={formatDate}
-            formatter={(v: number) => [v.toLocaleString(), "Views"]}
+            labelFormatter={(label: unknown) => formatDate(String(label))}
+            formatter={(v: unknown) => [typeof v === "number" ? v.toLocaleString() : String(v), "Views"]}
             labelStyle={{ fontWeight: 600, color: "#0f172a", marginBottom: 4 }}
           />
           <Area
