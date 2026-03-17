@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Account {
+  id             String    @id
+  username       String?
+  accessToken    String
+  tokenExpiresAt Int?
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+
+  reels Reel[]
+
+  @@map("accounts")
+}
+
+model Reel {
+  id           String    @id
+  accountId    String
+  caption      String?
+  permalink    String?
+  thumbnailUrl String?
+  publishedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  account    Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  dailyStats ReelDailyStat[]
+
+  @@map("reels")
+}
+
+model ReelDailyStat {
+  id        Int      @id @default(autoincrement())
+  reelId    String
+  date      DateTime @db.Date
+  views     Int      @default(0)
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  reel Reel @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, date])
+  @@map("reel_daily_stats")
+}
