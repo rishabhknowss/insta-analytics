@@ -51,70 +51,31 @@ function StatCard({
   const pos = (delta ?? 0) >= 0;
 
   return (
-    <div className="card" style={{
-      padding: "18px 20px",
-      borderTop: `3px solid ${accent ?? "var(--blue-500)"}`,
-    }}>
-      <p style={{
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        color: "var(--slate-400)",
-        marginBottom: 8,
-      }}>
+    <div
+      className="bg-white border border-slate-200 rounded-xl px-5 py-[18px]"
+      style={{ borderTopColor: accent ?? "#3b82f6", borderTopWidth: 3 }}
+    >
+      <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-slate-400 mb-2">
         {label}
       </p>
-      <p style={{
-        fontFamily: "var(--font-dm-mono)",
-        fontSize: 26,
-        fontWeight: 500,
-        color: "var(--slate-900)",
-        lineHeight: 1,
-        marginBottom: 6,
-      }}>
+      <p className="font-data text-[26px] font-medium text-slate-900 leading-none mb-1.5">
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 18 }}>
+      <div className="flex items-center gap-1.5 min-h-[18px]">
         {hasDelta && (
-          <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            fontFamily: "var(--font-dm-mono)",
-            padding: "2px 7px",
-            borderRadius: 999,
-            background: pos ? "var(--green-50)" : "var(--red-50)",
-            color: pos ? "#16a34a" : "#dc2626",
-          }}>
+          <span
+            className={`text-[11px] font-semibold font-data px-[7px] py-0.5 rounded-full ${
+              pos ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+            }`}
+          >
             {pos ? "+" : ""}{delta!.toLocaleString()}
           </span>
         )}
-        {sub && <span style={{ fontSize: 11, color: "var(--slate-400)" }}>{sub}</span>}
+        {sub && <span className="text-[11px] text-slate-400">{sub}</span>}
       </div>
     </div>
   );
 }
-
-const thBase: React.CSSProperties = {
-  padding: "10px 14px",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.07em",
-  textTransform: "uppercase",
-  color: "var(--slate-400)",
-  whiteSpace: "nowrap",
-  background: "var(--slate-50)",
-  borderBottom: "1px solid var(--slate-200)",
-};
-
-const tdBase: React.CSSProperties = {
-  padding: "13px 14px",
-  fontSize: 13,
-  color: "var(--slate-700)",
-  fontFamily: "var(--font-dm-mono)",
-  borderBottom: "1px solid var(--slate-100)",
-  verticalAlign: "middle",
-};
 
 export default async function AdminPage() {
   const headerStore = await headers();
@@ -133,22 +94,21 @@ export default async function AdminPage() {
     error = "Could not load data. Check DATABASE_URL and run migrations.";
   }
 
+  const totals24hPosts = accounts.reduce((s, a) => s + a.last24hPosted, 0);
+  const totals24hViews = accounts.reduce((s, a) => s + a.last24hViews, 0);
+  const totalsReels = accounts.reduce((s, a) => s + a.totalReels, 0);
+  const totalsViews = accounts.reduce((s, a) => s + a.totalViews, 0);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+    <div className="flex flex-col gap-7">
 
       {/* Page header */}
-      <div className="animate-up" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+      <div className="animate-fade-up flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 style={{
-            fontFamily: "var(--font-syne)",
-            fontSize: 22,
-            fontWeight: 800,
-            color: "var(--slate-900)",
-            marginBottom: 3,
-          }}>
+          <h1 className="text-[22px] font-bold tracking-tight text-slate-900 mb-0.5">
             Overview
           </h1>
-          <p style={{ fontSize: 13, color: "var(--slate-500)" }}>
+          <p className="text-[13px] text-slate-500">
             All tracked Instagram accounts · live snapshot data
           </p>
         </div>
@@ -156,30 +116,30 @@ export default async function AdminPage() {
       </div>
 
       {error ? (
-        <div style={{ padding: 16, background: "var(--red-50)", border: "1px solid #fecaca", borderRadius: 10, color: "#dc2626", fontSize: 14 }}>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-[10px] text-red-600 text-sm">
           {error}
         </div>
       ) : (
         <>
           {/* Global stat cards */}
-          <div className="animate-up animate-up-1" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-            <StatCard label="Accounts"           value={stats?.totalAccounts ?? 0}  sub="connected"               accent="#6366f1" />
-            <StatCard label="Total Reels"        value={stats?.totalReels ?? 0}     sub="tracked"                 accent="#0891b2" />
-            <StatCard label="Total Views"        value={stats?.latestViews ?? 0}    sub="latest snapshot"         accent="#2563eb" />
-            <StatCard label="24h New Views"      value={stats?.viewsDelta ?? 0}     sub="since last snapshot"     accent="#7c3aed" delta={stats?.viewsDelta} />
-            <StatCard label="Total Likes"        value={stats?.latestLikes ?? 0}    sub="latest snapshot"         accent="#e11d48" />
-            <StatCard label="Last 24h Posted"    value={stats?.last24hPosted ?? 0}  sub="reels published"         accent="#f59e0b" />
-            <StatCard label="Last 24h Reel Views" value={stats?.last24hViews ?? 0}  sub="views on new reels"      accent="#10b981" />
+          <div className="animate-fade-up [animation-delay:0.05s] grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+            <StatCard label="Accounts"            value={stats?.totalAccounts ?? 0}  sub="connected"           accent="#6366f1" />
+            <StatCard label="Total Reels"         value={stats?.totalReels ?? 0}     sub="tracked"             accent="#0891b2" />
+            <StatCard label="Total Views"         value={stats?.latestViews ?? 0}    sub="latest snapshot"     accent="#2563eb" />
+            <StatCard label="24h New Views"       value={stats?.viewsDelta ?? 0}     sub="since last snapshot" accent="#7c3aed" delta={stats?.viewsDelta} />
+            <StatCard label="Total Likes"         value={stats?.latestLikes ?? 0}    sub="latest snapshot"     accent="#e11d48" />
+            <StatCard label="Last 24h Posted"     value={stats?.last24hPosted ?? 0}  sub="reels published"     accent="#f59e0b" />
+            <StatCard label="Last 24h Reel Views" value={stats?.last24hViews ?? 0}   sub="views on new reels"  accent="#10b981" />
           </div>
 
           {/* Chart */}
-          <div className="card animate-up animate-up-2" style={{ padding: "22px 24px 16px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
+          <div className="animate-fade-up [animation-delay:0.1s] bg-white border border-slate-200 rounded-xl px-6 pt-[22px] pb-4">
+            <div className="flex items-baseline justify-between mb-[18px]">
               <div>
-                <h2 style={{ fontFamily: "var(--font-syne)", fontSize: 15, fontWeight: 700, color: "var(--slate-900)", marginBottom: 2 }}>
+                <h2 className="text-[15px] font-bold text-slate-900 mb-0.5">
                   Performance trend
                 </h2>
-                <p style={{ fontSize: 12, color: "var(--slate-400)" }}>
+                <p className="text-xs text-slate-400">
                   Cumulative views · likes · comments per snapshot date
                 </p>
               </div>
@@ -188,131 +148,125 @@ export default async function AdminPage() {
           </div>
 
           {/* Accounts table */}
-          <div className="animate-up animate-up-3">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div className="animate-fade-up [animation-delay:0.15s]">
+            <div className="flex items-center justify-between mb-3.5">
               <div>
-                <h2 style={{ fontFamily: "var(--font-syne)", fontSize: 15, fontWeight: 700, color: "var(--slate-900)", marginBottom: 2 }}>
+                <h2 className="text-[15px] font-bold text-slate-900 mb-0.5">
                   Accounts
                 </h2>
-                <p style={{ fontSize: 12, color: "var(--slate-400)" }}>Click an account to view full analytics</p>
+                <p className="text-xs text-slate-400">Click an account to view full analytics</p>
               </div>
-              <span style={{
-                fontSize: 12, fontWeight: 600,
-                background: "var(--blue-50)", color: "var(--blue-600)",
-                border: "1px solid var(--blue-100)",
-                borderRadius: 999, padding: "3px 10px",
-              }}>
+              <span className="text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2.5 py-0.5">
                 {accounts.length} connected
               </span>
             </div>
 
             {accounts.length === 0 ? (
-              <div className="card" style={{ padding: 56, textAlign: "center" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--slate-100)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+              <div className="bg-white border border-slate-200 rounded-xl py-14 text-center">
+                <div className="w-10 h-10 rounded-[10px] bg-slate-100 inline-flex items-center justify-center mb-3">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
-                <p style={{ color: "var(--slate-500)", fontSize: 14, fontWeight: 500, marginBottom: 4 }}>No accounts connected</p>
-                <p style={{ color: "var(--slate-400)", fontSize: 13 }}>Connect an Instagram account to start tracking.</p>
+                <p className="text-slate-500 text-sm font-medium mb-1">No accounts connected</p>
+                <p className="text-slate-400 text-[13px]">Connect an Instagram account to start tracking.</p>
               </div>
             ) : (
-              <div className="card" style={{ overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-[13px]">
                     <thead>
-                      <tr style={{ background: "var(--slate-50)" }}>
-                        <th style={{ ...thBase, textAlign: "left", minWidth: 200, paddingLeft: 20, borderRight: "1px solid var(--slate-200)" }}>
+                      <tr>
+                        <th className="px-5 py-2.5 text-left text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b-2 border-slate-200 min-w-[200px]">
                           Account
                         </th>
-                        <th style={{ ...thBase, textAlign: "right", color: "#b45309", background: "#fefce8", borderTop: "2px solid #fde68a" }}>
+                        <th className="px-3.5 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-amber-700 bg-amber-50/60 border-b-2 border-amber-200 whitespace-nowrap">
                           24h Posts
                         </th>
-                        <th style={{ ...thBase, textAlign: "right", color: "#b45309", background: "#fefce8", borderTop: "2px solid #fde68a", borderRight: "1px solid var(--slate-200)" }}>
+                        <th className="px-3.5 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-amber-700 bg-amber-50/60 border-b-2 border-amber-200 whitespace-nowrap">
                           24h Views
                         </th>
-                        <th style={{ ...thBase, textAlign: "left", minWidth: 200, borderRight: "1px solid var(--slate-200)" }}>
+                        <th className="px-3.5 py-2.5 text-left text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b-2 border-slate-200 min-w-[200px]">
                           Top Reel
                         </th>
-                        <th style={{ ...thBase, textAlign: "right" }}>
+                        <th className="px-3.5 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b-2 border-slate-200 whitespace-nowrap">
                           Reels
                         </th>
-                        <th style={{ ...thBase, textAlign: "right", paddingRight: 20 }}>
+                        <th className="px-5 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b-2 border-slate-200 whitespace-nowrap">
                           Total Views
                         </th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                       {accounts.map((a) => (
-                        <tr key={a.id} className="tr-hover" style={{ borderBottom: "1px solid var(--slate-100)" }}>
+                        <tr key={a.id} className="hover:bg-slate-50/70 transition-colors">
                           {/* Account */}
-                          <td style={{ ...tdBase, paddingLeft: 20, fontFamily: "var(--font-dm-sans)", borderRight: "1px solid var(--slate-100)", borderBottom: "none" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              {/* Avatar placeholder */}
-                              <div style={{
-                                width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                                background: "linear-gradient(135deg, #ddd6fe, #c7d2fe)",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: 13, fontWeight: 700, color: "#6366f1",
-                              }}>
+                          <td className="px-5 py-3.5 border-r border-slate-100">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-full shrink-0 bg-linear-to-br from-violet-200 to-indigo-200 flex items-center justify-center text-[13px] font-bold text-indigo-500">
                                 {(a.username ?? "?")[0].toUpperCase()}
                               </div>
                               <div>
-                                <a href={`/admin/accounts/${a.id}`} className="link-blue" style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 2 }}>
+                                <a
+                                  href={`/admin/accounts/${a.id}`}
+                                  className="text-[13px] font-semibold text-blue-600 hover:underline block mb-0.5"
+                                >
                                   {a.username ? `@${a.username}` : "Unknown"}
                                 </a>
-                                <span style={{ fontSize: 11, color: "var(--slate-400)", fontFamily: "var(--font-dm-mono)" }}>
+                                <span className="text-[11px] text-slate-400 font-data">
                                   {a.id}
                                 </span>
                               </div>
                             </div>
                           </td>
-                          {/* 24h */}
-                          <td style={{ ...tdBase, textAlign: "right", borderBottom: "none", background: a.last24hPosted > 0 ? "#fefce8" : undefined }}>
+                          {/* 24h Posts */}
+                          <td className={`px-3.5 py-3.5 text-right font-data align-middle ${a.last24hPosted > 0 ? "bg-amber-50/40" : ""}`}>
                             {a.last24hPosted > 0 ? (
-                              <span style={{ fontWeight: 700, color: "#b45309" }}>{a.last24hPosted}</span>
+                              <span className="font-bold text-amber-700">{a.last24hPosted}</span>
                             ) : (
-                              <span style={{ color: "var(--slate-300)" }}>—</span>
+                              <span className="text-slate-300">—</span>
                             )}
                           </td>
-                          <td style={{ ...tdBase, textAlign: "right", borderRight: "1px solid var(--slate-100)", borderBottom: "none", background: a.last24hViews > 0 ? "#fefce8" : undefined }}>
+                          {/* 24h Views */}
+                          <td className={`px-3.5 py-3.5 text-right font-data align-middle border-r border-slate-100 ${a.last24hViews > 0 ? "bg-amber-50/40" : ""}`}>
                             {a.last24hViews > 0 ? (
-                              <span style={{ fontWeight: 600, color: "#92400e" }}>{a.last24hViews.toLocaleString()}</span>
+                              <span className="font-semibold text-amber-800">{a.last24hViews.toLocaleString()}</span>
                             ) : (
-                              <span style={{ color: "var(--slate-300)" }}>—</span>
+                              <span className="text-slate-300">—</span>
                             )}
                           </td>
                           {/* Top reel */}
-                          <td style={{ ...tdBase, padding: "10px 14px", borderRight: "1px solid var(--slate-100)", borderBottom: "none" }}>
+                          <td className="px-3.5 py-3 border-r border-slate-100 align-middle">
                             {a.mvReelId ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div className="flex items-center gap-2.5">
                                 {a.mvThumbnail ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={a.mvThumbnail}
                                     alt=""
-                                    style={{ width: 40, height: 40, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid var(--slate-200)" }}
+                                    className="w-10 h-10 rounded-md object-cover shrink-0 border border-slate-200"
                                   />
                                 ) : (
-                                  <div style={{ width: 40, height: 40, borderRadius: 6, background: "var(--slate-100)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <div className="w-10 h-10 rounded-md bg-slate-100 shrink-0 flex items-center justify-center">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
                                   </div>
                                 )}
                                 <div>
-                                  <p style={{ fontFamily: "var(--font-dm-mono)", fontSize: 12, fontWeight: 700, color: "var(--slate-900)", marginBottom: 3 }}>
+                                  <p className="font-data text-xs font-bold text-slate-900 mb-0.5">
                                     {a.mvViews.toLocaleString()}
-                                    <span style={{ fontWeight: 400, color: "var(--slate-400)", fontSize: 11 }}> views</span>
+                                    <span className="font-normal text-slate-400 text-[11px]"> views</span>
                                   </p>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                    <span style={{ fontSize: 11, color: "var(--slate-400)" }}>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] text-slate-400">
                                       ♥ {a.mvLikes.toLocaleString()}
                                     </span>
                                     {a.mvPermalink && (
-                                      <a href={a.mvPermalink} target="_blank" rel="noopener noreferrer" style={{
-                                        fontSize: 10, fontWeight: 600, color: "var(--blue-500)",
-                                        textDecoration: "none", padding: "1px 6px",
-                                        background: "var(--blue-50)", borderRadius: 4,
-                                      }}>
+                                      <a
+                                        href={a.mvPermalink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] font-semibold text-blue-500 no-underline px-1.5 py-px bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                                      >
                                         ↗ View
                                       </a>
                                     )}
@@ -320,15 +274,16 @@ export default async function AdminPage() {
                                 </div>
                               </div>
                             ) : (
-                              <span style={{ color: "var(--slate-300)", fontSize: 12 }}>No data yet</span>
+                              <span className="text-slate-300 text-xs">No data yet</span>
                             )}
                           </td>
-                          {/* Totals */}
-                          <td style={{ ...tdBase, textAlign: "right", fontWeight: 600, color: "var(--slate-700)", borderBottom: "none" }}>
+                          {/* Reels count */}
+                          <td className="px-3.5 py-3.5 text-right font-data font-semibold text-slate-700 align-middle">
                             {a.totalReels.toLocaleString()}
                           </td>
-                          <td style={{ ...tdBase, textAlign: "right", paddingRight: 20, borderBottom: "none" }}>
-                            <span style={{ fontFamily: "var(--font-dm-mono)", fontWeight: 700, fontSize: 13, color: "var(--slate-900)" }}>
+                          {/* Total views */}
+                          <td className="px-5 py-3.5 text-right align-middle">
+                            <span className="font-data font-bold text-[13px] text-slate-900">
                               {a.totalViews.toLocaleString()}
                             </span>
                           </td>
@@ -337,23 +292,23 @@ export default async function AdminPage() {
                     </tbody>
                     {/* Totals footer */}
                     <tfoot>
-                      <tr style={{ background: "var(--slate-50)", borderTop: "2px solid var(--slate-200)" }}>
-                        <td style={{ ...tdBase, paddingLeft: 20, fontFamily: "var(--font-dm-sans)", fontWeight: 700, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--slate-400)", borderBottom: "none", borderRight: "1px solid var(--slate-100)" }}>
+                      <tr className="bg-slate-50 border-t-2 border-slate-200">
+                        <td className="px-5 py-3 font-bold text-[11px] tracking-[0.06em] uppercase text-slate-400 border-r border-slate-100">
                           {accounts.length} account{accounts.length !== 1 ? "s" : ""} total
                         </td>
-                        <td style={{ ...tdBase, textAlign: "right", fontWeight: 600, color: "var(--slate-600)", borderBottom: "none" }}>
-                          {accounts.reduce((s, a) => s + a.last24hPosted, 0) || "—"}
+                        <td className="px-3.5 py-3 text-right font-data font-semibold text-slate-600">
+                          {totals24hPosts || "—"}
                         </td>
-                        <td style={{ ...tdBase, textAlign: "right", fontWeight: 700, color: "var(--slate-700)", borderRight: "1px solid var(--slate-100)", borderBottom: "none" }}>
-                          {accounts.reduce((s, a) => s + a.last24hViews, 0).toLocaleString()}
+                        <td className="px-3.5 py-3 text-right font-data font-bold text-slate-700 border-r border-slate-100">
+                          {totals24hViews.toLocaleString()}
                         </td>
-                        <td style={{ ...tdBase, borderRight: "1px solid var(--slate-100)", borderBottom: "none" }} />
-                        <td style={{ ...tdBase, textAlign: "right", fontWeight: 700, color: "var(--slate-700)", borderBottom: "none" }}>
-                          {accounts.reduce((s, a) => s + a.totalReels, 0).toLocaleString()}
+                        <td className="px-3.5 py-3 border-r border-slate-100" />
+                        <td className="px-3.5 py-3 text-right font-data font-bold text-slate-700">
+                          {totalsReels.toLocaleString()}
                         </td>
-                        <td style={{ ...tdBase, textAlign: "right", paddingRight: 20, borderBottom: "none" }}>
-                          <span style={{ fontFamily: "var(--font-dm-mono)", fontWeight: 700, fontSize: 13, color: "var(--slate-900)" }}>
-                            {accounts.reduce((s, a) => s + a.totalViews, 0).toLocaleString()}
+                        <td className="px-5 py-3 text-right">
+                          <span className="font-data font-bold text-[13px] text-slate-900">
+                            {totalsViews.toLocaleString()}
                           </span>
                         </td>
                       </tr>
@@ -365,7 +320,7 @@ export default async function AdminPage() {
           </div>
 
           {/* Footer note */}
-          <p className="animate-up animate-up-4" style={{ fontSize: 11, color: "var(--slate-400)", display: "flex", alignItems: "center", gap: 6 }}>
+          <p className="animate-fade-up [animation-delay:0.2s] text-[11px] text-slate-400 flex items-center gap-1.5">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>

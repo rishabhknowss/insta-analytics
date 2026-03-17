@@ -14,7 +14,7 @@ export default function RunSnapshotButton() {
       const data = await res.json() as { snapshotted?: number; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Unknown error");
       setState("success");
-      setResult(`✓ Snapshotted ${data.snapshotted} reels`);
+      setResult(`Snapshotted ${data.snapshotted} reels`);
       setTimeout(() => { setState("idle"); setResult(null); }, 4000);
     } catch (err) {
       setState("error");
@@ -24,40 +24,19 @@ export default function RunSnapshotButton() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+    <div className="flex flex-col items-end gap-1.5">
       <button
         onClick={run}
         disabled={state === "loading"}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 7,
-          padding: "9px 18px",
-          background: state === "loading" ? "var(--slate-100)" : "var(--white)",
-          border: "1px solid var(--slate-200)",
-          borderRadius: 9,
-          fontSize: 13,
-          fontWeight: 500,
-          color: state === "loading" ? "var(--slate-400)" : "var(--slate-700)",
-          cursor: state === "loading" ? "not-allowed" : "pointer",
-          fontFamily: "var(--font-dm-sans)",
-          transition: "background 0.15s, border-color 0.15s",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-        }}
-        onMouseEnter={e => {
-          if (state !== "loading") {
-            (e.currentTarget as HTMLButtonElement).style.background = "var(--slate-50)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--slate-300)";
-          }
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLButtonElement).style.background = state === "loading" ? "var(--slate-100)" : "var(--white)";
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--slate-200)";
-        }}
+        className={`inline-flex items-center gap-[7px] px-[18px] py-[9px] rounded-[9px] text-[13px] font-medium border shadow-sm transition-colors ${
+          state === "loading"
+            ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+            : "bg-white border-slate-200 text-slate-700 cursor-pointer hover:bg-slate-50 hover:border-slate-300"
+        }`}
       >
         {state === "loading" ? (
           <>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 1s linear infinite" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
             </svg>
             Running…
@@ -72,15 +51,10 @@ export default function RunSnapshotButton() {
         )}
       </button>
       {result && (
-        <span style={{
-          fontSize: 12,
-          fontWeight: 500,
-          color: state === "success" ? "var(--green-500)" : "var(--red-500)",
-        }}>
+        <span className={`text-xs font-medium ${state === "success" ? "text-green-500" : "text-red-500"}`}>
           {result}
         </span>
       )}
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

@@ -15,9 +15,9 @@ export async function GET(
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  // Build date filters as separate conditions
-  const fromDate = from ? new Date(from) : null;
-  const toDate = to ? new Date(to) : null;
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const fromDate = from && ISO_DATE.test(from) ? new Date(from) : null;
+  const toDate   = to   && ISO_DATE.test(to)   ? new Date(to)   : null;
 
   const rows = await prisma.$queryRaw<
     { date: Date; views: bigint; likes: bigint; comments: bigint }[]

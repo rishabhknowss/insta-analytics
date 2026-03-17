@@ -4,8 +4,10 @@ import jwt from "jsonwebtoken";
 
 export const ADMIN_COOKIE = "admin_session";
 
-function secret() {
-  return process.env.ADMIN_JWT_SECRET ?? process.env.SESSION_SECRET ?? "admin-fallback-secret";
+function secret(): string {
+  const s = process.env.ADMIN_JWT_SECRET;
+  if (!s) throw new Error("ADMIN_JWT_SECRET is not set");
+  return s;
 }
 
 export function signAdminToken(): string {

@@ -40,6 +40,7 @@ export async function setSession(payload: SessionPayload) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60, // 1 hour — matches Instagram short-lived token expiry
     path: "/",
   });
 }
