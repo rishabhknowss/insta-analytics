@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
   `;
 
   return NextResponse.json(
-    rows.map((r) => ({
+    rows.map((r: Row) => ({
       id: r.id,
       username: r.username,
       last24hPosted: Number(r.last24hPosted),
