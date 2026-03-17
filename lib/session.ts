@@ -14,15 +14,26 @@ export async function getSession(): Promise<SessionPayload | null> {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const secret = process.env.SESSION_SECRET;
 
-  if (!token || !secret) return null;
+  console.log("[session] cookie exists:", !!token, "secret exists:", !!secret);
+
+  if (!token || !secret) {
+    console.log("[session] missing token or secret, returning null");
+    return null;
+  }
 
   try {
     const decoded = jwt.verify(token, secret) as SessionPayload;
-    if (decoded.expiresAt && decoded.expiresAt * 1000 < Date.now()) {
+    const now = Date.now();
+    const expiresMs = decoded.expiresAt * 1000;
+    console.log("[session] decoded igUserId:", decoded.igUserId, "expiresAt:", decoded.expiresAt, "now:", Math.floor(now / 1000), "expired:", expiresMs < now);
+
+    if (decoded.expiresAt && expiresMs < now) {
+      console.log("[session] token expired");
       return null;
     }
     return decoded;
-  } catch {
+  } catch (err) {
+    console.error("[session] jwt verify failed:", err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -40,7 +51,7 @@ export async function setSession(payload: SessionPayload) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60, // 1 hour — matches Instagram short-lived token expiry
+    maxAge: 60 * 60,
     path: "/",
   });
 }

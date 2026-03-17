@@ -1,24 +1,78 @@
-import { cookies } from "next/headers";
+import { getSession } from "@/lib/session";
+import { fetchJson } from "@/lib/metaApi";
+import { redirect } from "next/navigation";
+
+type MediaItem = {
+  id: string;
+  caption?: string;
+  media_type?: string;
+  media_product_type?: string;
+  media_url?: string;
+  thumbnail_url?: string;
+  permalink?: string;
+};
+
+type InsightsResponse = {
+  data?: { name: string; values: { value: number }[] }[];
+};
 
 async function getReels() {
-  const cookieStore = await cookies();
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/reels`, {
-    method: "GET",
-    cache: "no-store",
-    headers: { Cookie: cookieStore.toString() },
+  console.log("[dashboard] getReels called");
+  const session = await getSession();
+  console.log("[dashboard] session:", session ? `igUserId=${session.igUserId}` : "null");
+  if (!session) return null;
+
+  console.log("[dashboard] fetching media for", session.igUserId);
+  const mediaData = await fetchJson<{ data?: MediaItem[] }>(
+    `/${session.igUserId}/media`,
+    session.accessToken,
+    {
+      fields: "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,is_shared_to_feed",
+      limit: "25",
+    },
+  );
+
+  const allMedia = mediaData.data ?? [];
+  const reels = allMedia.filter((m) => {
+    const type = m.media_product_type || m.media_type;
+    return type === "REELS" || type === "REEL";
   });
-  if (!res.ok) throw new Error("Failed to load reels");
-  return (await res.json()) as {
-    reels: {
-      id: string;
-      caption: string;
-      thumbnailUrl: string;
-      permalink: string;
-      views: number;
-      likes: number;
-      comments: number;
-    }[];
-  };
+
+  const results = await Promise.all(
+    reels.map(async (media) => {
+      try {
+        const insights = await fetchJson<InsightsResponse>(
+          `/${media.id}/insights`,
+          session.accessToken,
+          { metric: "views,likes,comments,shares,saved,reach" },
+        );
+        let views = 0, likes = 0, comments = 0;
+        for (const metric of insights.data ?? []) {
+          const value = metric.values?.[0]?.value ?? 0;
+          if (metric.name === "views") views = value;
+          if (metric.name === "likes") likes = value;
+          if (metric.name === "comments") comments = value;
+        }
+        return {
+          id: media.id,
+          caption: media.caption ?? "",
+          thumbnailUrl: media.thumbnail_url ?? media.media_url ?? "",
+          permalink: media.permalink ?? "",
+          views, likes, comments,
+        };
+      } catch {
+        return {
+          id: media.id,
+          caption: media.caption ?? "",
+          thumbnailUrl: media.thumbnail_url ?? media.media_url ?? "",
+          permalink: media.permalink ?? "",
+          views: 0, likes: 0, comments: 0,
+        };
+      }
+    }),
+  );
+
+  return { reels: results };
 }
 
 function StatPill({ icon, value, label }: { icon: string; value: number; label: string }) {
@@ -37,7 +91,9 @@ export default async function DashboardPage() {
 
   try {
     data = await getReels();
+    if (data === null) redirect("/");
   } catch (e) {
+    if (typeof e === "object" && e !== null && "digest" in e) throw e; // re-throw Next.js redirect
     error = e instanceof Error ? e.message : "Failed to load reels";
   }
 

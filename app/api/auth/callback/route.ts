@@ -10,8 +10,10 @@ async function exchangeCodeForToken(code: string) {
   const clientSecret = process.env.META_APP_SECRET;
   const redirectUri = process.env.META_REDIRECT_URI;
 
+  console.log("[callback] env check — APP_ID:", !!clientId, "SECRET:", !!clientSecret, "REDIRECT:", redirectUri);
+
   if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error("Meta app is not fully configured.");
+    throw new Error(`Meta app not configured. APP_ID:${!!clientId} SECRET:${!!clientSecret} REDIRECT:${!!redirectUri}`);
   }
 
   const params = new URLSearchParams({
@@ -30,13 +32,13 @@ async function exchangeCodeForToken(code: string) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Token exchange failed: ${text}`);
+    console.error("[callback] token exchange failed:", res.status, text);
+    throw new Error(`Token exchange failed (${res.status}): ${text}`);
   }
 
-  return (await res.json()) as {
-    access_token: string;
-    user_id: number;
-  };
+  const data = (await res.json()) as { access_token: string; user_id: number };
+  console.log("[callback] token exchange OK, user_id:", data.user_id);
+  return data;
 }
 
 export async function GET(req: NextRequest) {
@@ -45,7 +47,10 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
+  console.log("[callback] hit — code:", !!code, "error:", error, "base:", base);
+
   if (error || !code) {
+    console.log("[callback] no code or error param, redirecting home");
     return NextResponse.redirect(`${base}/`);
   }
 
@@ -60,13 +65,18 @@ export async function GET(req: NextRequest) {
       const profileRes = await fetch(
         `https://graph.instagram.com/v25.0/${igUserId}?fields=id,username&access_token=${tokenData.access_token}`,
       );
+      const profileText = await profileRes.text();
+      console.log("[callback] profile fetch:", profileRes.status, profileText.slice(0, 200));
       if (profileRes.ok) {
-        const profile = (await profileRes.json()) as { username?: string };
+        const profile = JSON.parse(profileText) as { username?: string };
         username = profile.username ?? null;
       }
-    } catch { /* non-fatal */ }
+    } catch (e) {
+      console.error("[callback] profile fetch error:", e instanceof Error ? e.message : e);
+    }
 
-    // Save to DB
+    console.log("[callback] upserting account:", igUserId, "username:", username);
+
     await prisma.account.upsert({
       where: { id: igUserId },
       update: {
@@ -83,14 +93,16 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Build redirect response with cookie set directly on it
     const secret = process.env.SESSION_SECRET;
+    console.log("[callback] SESSION_SECRET exists:", !!secret);
     if (!secret) throw new Error("SESSION_SECRET not set");
 
     const token = jwt.sign(
       { accessToken: tokenData.access_token, igUserId, expiresAt },
       secret,
     );
+
+    console.log("[callback] JWT created, length:", token.length, "redirecting to:", `${base}/dashboard`);
 
     const response = NextResponse.redirect(`${base}/dashboard`);
     response.cookies.set(SESSION_COOKIE_NAME, token, {
@@ -101,9 +113,10 @@ export async function GET(req: NextRequest) {
       path: "/",
     });
 
+    console.log("[callback] cookie set on response, returning redirect");
     return response;
   } catch (err) {
-    console.error("[auth/callback] Error:", err instanceof Error ? err.message : err);
+    console.error("[callback] FATAL:", err instanceof Error ? err.stack : err);
     return NextResponse.redirect(`${base}/?error=auth_failed`);
   }
 }
