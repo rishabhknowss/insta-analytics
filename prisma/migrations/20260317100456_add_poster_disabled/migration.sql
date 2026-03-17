@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "posters" ADD COLUMN     "disabled" BOOLEAN NOT NULL DEFAULT false;

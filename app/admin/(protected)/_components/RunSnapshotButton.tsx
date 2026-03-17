@@ -28,10 +28,10 @@ export default function RunSnapshotButton() {
       <button
         onClick={run}
         disabled={state === "loading"}
-        className={`inline-flex items-center gap-[7px] px-[18px] py-[9px] rounded-[9px] text-[13px] font-medium border shadow-sm transition-colors ${
+        className={`inline-flex items-center gap-1.5 sm:gap-[7px] px-3 sm:px-[18px] py-2 sm:py-[9px] rounded-lg sm:rounded-[9px] text-xs sm:text-[13px] font-medium border shadow-sm transition-colors ${
           state === "loading"
             ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-            : "bg-white border-slate-200 text-slate-700 cursor-pointer hover:bg-slate-50 hover:border-slate-300"
+            : "bg-white border-slate-200 text-slate-700 cursor-pointer hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100"
         }`}
       >
         {state === "loading" ? (
@@ -39,19 +39,19 @@ export default function RunSnapshotButton() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
             </svg>
-            Running…
+            <span className="hidden sm:inline">Running…</span>
           </>
         ) : (
           <>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Run snapshot
+            <span className="hidden sm:inline">Run snapshot</span>
           </>
         )}
       </button>
       {result && (
-        <span className={`text-xs font-medium ${state === "success" ? "text-green-500" : "text-red-500"}`}>
+        <span className={`text-[11px] sm:text-xs font-medium ${state === "success" ? "text-green-500" : "text-red-500"}`}>
           {result}
         </span>
       )}

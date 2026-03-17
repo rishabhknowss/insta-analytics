@@ -74,6 +74,7 @@ model Poster {
   monthlyRate    Int        @default(1500)
   totalPaid      Int        @default(0)
   createdAt      DateTime   @default(now())
+  disabled       Boolean    @default(false)
   updatedAt      DateTime   @updatedAt
 
   account  Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)

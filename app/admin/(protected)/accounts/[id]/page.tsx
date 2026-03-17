@@ -6,6 +6,7 @@ type DailyStat = {
   views: number;
   likes: number;
   comments: number;
+  reels: number;
 };
 
 type ReelDetail = {
@@ -42,29 +43,6 @@ async function fetchWithAdmin(url: string, auth: string) {
   return res.json();
 }
 
-const thStyle: React.CSSProperties = {
-  padding: "10px 16px",
-  textAlign: "right",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.07em",
-  textTransform: "uppercase" as const,
-  color: "var(--slate-400)",
-  whiteSpace: "nowrap",
-  background: "var(--slate-50)",
-  borderBottom: "1px solid var(--slate-200)",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "13px 16px",
-  textAlign: "right",
-  fontSize: 13,
-  color: "var(--slate-700)",
-  fontFamily: "var(--font-dm-mono)",
-  borderBottom: "1px solid var(--slate-100)",
-  verticalAlign: "middle",
-};
-
 export default async function AccountDetailPage({
   params,
 }: {
@@ -90,7 +68,7 @@ export default async function AccountDetailPage({
 
   if (error || !account) {
     return (
-      <div style={{ padding: 16, background: "var(--red-50)", border: "1px solid #fecaca", borderRadius: 10, color: "#dc2626", fontSize: 14 }}>
+      <div className="p-4 bg-red-50 border border-red-200 rounded-[10px] text-red-600 text-sm">
         {error ?? "Account not found."}
       </div>
     );
@@ -102,65 +80,38 @@ export default async function AccountDetailPage({
   const totalComments = latest?.comments ?? 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
+    <div className="flex flex-col gap-5 sm:gap-6">
       {/* Breadcrumb + Header */}
-      <div className="animate-up">
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--slate-400)", marginBottom: 12 }}>
-          <a href="/admin" className="breadcrumb-link">Overview</a>
-          <span style={{ color: "var(--slate-300)" }}>/</span>
-          <span style={{ color: "var(--slate-600)" }}>
-            {account.username ? `@${account.username}` : account.id}
-          </span>
+      <div className="animate-fade-up">
+        <div className="flex items-center gap-1.5 text-[13px] text-slate-400 mb-3">
+          <a href="/admin" className="text-slate-400 hover:text-blue-500 no-underline transition-colors">Overview</a>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-600 truncate">{account.username ? `@${account.username}` : account.id}</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <h1 style={{
-              fontFamily: "var(--font-syne)",
-              fontSize: 22,
-              fontWeight: 800,
-              color: "var(--slate-900)",
-              marginBottom: 4,
-            }}>
+            <h1 className="text-lg sm:text-[22px] font-bold text-slate-900 mb-1">
               {account.username ? `@${account.username}` : account.id}
             </h1>
-            <p style={{ fontSize: 13, color: "var(--slate-500)" }}>
-              {account.reels.length} reel{account.reels.length !== 1 ? "s" : ""} tracked
-              {" · "}Last snapshot{" "}
+            <p className="text-xs sm:text-[13px] text-slate-500">
+              {account.reels.length} reel{account.reels.length !== 1 ? "s" : ""} tracked · Last{" "}
               {new Date(account.lastSeenAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
             </p>
           </div>
 
-          {/* Quick stat chips */}
-          <div style={{ display: "flex", gap: 10 }}>
+          {/* Stat chips */}
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2.5">
             {[
               { label: "Views",    value: totalViews,    color: "#2563eb" },
               { label: "Likes",    value: totalLikes,    color: "#e11d48" },
               { label: "Comments", value: totalComments, color: "#0891b2" },
             ].map(({ label, value, color }) => (
-              <div key={label} style={{
-                padding: "10px 16px",
-                background: "var(--white)",
-                border: "1px solid var(--slate-200)",
-                borderTop: `3px solid ${color}`,
-                borderRadius: 10,
-                textAlign: "center",
-                minWidth: 88,
-              }}>
-                <p style={{
-                  fontFamily: "var(--font-dm-mono)",
-                  fontSize: 17,
-                  fontWeight: 500,
-                  color: "var(--slate-900)",
-                  lineHeight: 1,
-                  marginBottom: 4,
-                }}>
+              <div key={label} className="bg-white border border-slate-200 rounded-[10px] px-3.5 py-2.5 sm:px-4 sm:py-2.5 text-center sm:min-w-[88px]" style={{ borderTopColor: color, borderTopWidth: 3 }}>
+                <p className="font-data text-base sm:text-[17px] font-medium text-slate-900 leading-none mb-1">
                   {value.toLocaleString()}
                 </p>
-                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--slate-400)" }}>
-                  {label}
-                </p>
+                <p className="text-[9px] sm:text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400">{label}</p>
               </div>
             ))}
           </div>
@@ -168,83 +119,115 @@ export default async function AccountDetailPage({
       </div>
 
       {/* Chart */}
-      <div className="animate-up animate-up-1">
-        <AccountAnalyticsChart
-          series={analytics?.series ?? []}
-          comparison={analytics?.comparison ?? null}
-        />
+      <div className="animate-fade-up [animation-delay:0.05s]">
+        <AccountAnalyticsChart series={analytics?.series ?? []} comparison={analytics?.comparison ?? null} />
       </div>
 
-      {/* Reels table */}
-      <div className="animate-up animate-up-2">
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-          <h2 style={{ fontFamily: "var(--font-syne)", fontSize: 15, fontWeight: 700, color: "var(--slate-900)" }}>
-            All Reels
-          </h2>
-          <span style={{ fontSize: 12, color: "var(--slate-400)" }}>{account.reels.length} total</span>
+      {/* Reels */}
+      <div className="animate-fade-up [animation-delay:0.1s]">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-sm sm:text-[15px] font-bold text-slate-900">All Reels</h2>
+          <span className="text-xs text-slate-400">{account.reels.length} total</span>
         </div>
 
         {account.reels.length === 0 ? (
-          <div className="card" style={{ padding: 48, textAlign: "center" }}>
-            <p style={{ color: "var(--slate-400)", fontSize: 14 }}>No reels found for this account yet.</p>
+          <div className="bg-white border border-slate-200 rounded-xl py-10 sm:py-12 text-center px-4">
+            <p className="text-slate-400 text-sm">No reels found for this account yet.</p>
           </div>
         ) : (
-          <div className="card" style={{ overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr>
-                  <th style={{ ...thStyle, textAlign: "left" }}>Reel</th>
-                  <th style={thStyle}>Views</th>
-                  <th style={thStyle}>Likes</th>
-                  <th style={thStyle}>Comments</th>
-                  <th style={thStyle}>Published</th>
-                </tr>
-              </thead>
-              <tbody>
-                {account.reels.map((reel) => {
-                  const latest = reel.dailyStats[reel.dailyStats.length - 1] ?? null;
-                  return (
-                    <tr key={reel.id} className="tr-hover">
-                      <td style={{ ...tdStyle, textAlign: "left", fontFamily: "var(--font-dm-sans)", maxWidth: 360 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          {reel.thumbnailUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={reel.thumbnailUrl}
-                              alt=""
-                              style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 6, objectFit: "cover", border: "1px solid var(--slate-200)" }}
-                            />
-                          ) : (
-                            <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 6, background: "var(--slate-100)", border: "1px solid var(--slate-200)" }} />
-                          )}
-                          <div style={{ minWidth: 0 }}>
-                            <p style={{ fontWeight: 500, color: "var(--slate-800)", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 260, marginBottom: 2 }}>
-                              {reel.caption?.slice(0, 70) ?? "Untitled"}
-                            </p>
-                            {reel.permalink && (
-                              <a href={reel.permalink} target="_blank" rel="noopener noreferrer" className="link-subtle">
-                                View on Instagram ↗
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ ...tdStyle, fontWeight: 600, color: "var(--slate-900)" }}>
-                        {(latest?.views ?? 0).toLocaleString()}
-                      </td>
-                      <td style={tdStyle}>{(latest?.likes ?? 0).toLocaleString()}</td>
-                      <td style={tdStyle}>{(latest?.comments ?? 0).toLocaleString()}</td>
-                      <td style={{ ...tdStyle, fontSize: 12, color: "var(--slate-400)" }}>
-                        {reel.publishedAt
-                          ? new Date(reel.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-                          : "—"}
-                      </td>
+          <>
+            {/* Mobile: card layout */}
+            <div className="flex flex-col gap-2.5 md:hidden">
+              {account.reels.map((reel) => {
+                const latest = reel.dailyStats[reel.dailyStats.length - 1] ?? null;
+                return (
+                  <div key={reel.id} className="bg-white border border-slate-200 rounded-xl p-3.5">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      {reel.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={reel.thumbnailUrl} alt="" className="w-10 h-10 rounded-md object-cover shrink-0 border border-slate-200" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-md bg-slate-100 shrink-0 border border-slate-200" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-slate-800 truncate">{reel.caption?.slice(0, 70) ?? "Untitled"}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {reel.publishedAt ? new Date(reel.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
+                        </p>
+                      </div>
+                      {reel.permalink && (
+                        <a href={reel.permalink} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[10px] font-semibold text-blue-500 px-2 py-1 bg-blue-50 rounded-md">↗</a>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 text-center">
+                      <div className="bg-slate-50 rounded-lg py-1.5">
+                        <p className="font-data text-xs font-bold text-slate-900">{(latest?.views ?? 0).toLocaleString()}</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider">Views</p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg py-1.5">
+                        <p className="font-data text-xs font-bold text-slate-900">{(latest?.likes ?? 0).toLocaleString()}</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider">Likes</p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg py-1.5">
+                        <p className="font-data text-xs font-bold text-slate-900">{(latest?.comments ?? 0).toLocaleString()}</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider">Comments</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop: table */}
+            <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b border-slate-200">Reel</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b border-slate-200 whitespace-nowrap">Views</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b border-slate-200 whitespace-nowrap">Likes</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b border-slate-200 whitespace-nowrap">Comments</th>
+                      <th className="px-4 py-2.5 text-right text-[10px] font-bold tracking-[0.07em] uppercase text-slate-400 bg-slate-50 border-b border-slate-200 whitespace-nowrap">Published</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {account.reels.map((reel) => {
+                      const latest = reel.dailyStats[reel.dailyStats.length - 1] ?? null;
+                      return (
+                        <tr key={reel.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              {reel.thumbnailUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={reel.thumbnailUrl} alt="" className="w-[38px] h-[38px] rounded-md object-cover shrink-0 border border-slate-200" />
+                              ) : (
+                                <div className="w-[38px] h-[38px] rounded-md bg-slate-100 shrink-0 border border-slate-200" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-medium text-slate-800 truncate max-w-[260px] mb-0.5">{reel.caption?.slice(0, 70) ?? "Untitled"}</p>
+                                {reel.permalink && (
+                                  <a href={reel.permalink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-500 hover:underline">
+                                    View on Instagram ↗
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-data font-semibold text-slate-900">{(latest?.views ?? 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right font-data text-slate-700">{(latest?.likes ?? 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right font-data text-slate-700">{(latest?.comments ?? 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right font-data text-xs text-slate-400">
+                            {reel.publishedAt ? new Date(reel.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

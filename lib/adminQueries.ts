@@ -10,7 +10,7 @@ export type GlobalStats = {
   latestComments: number;
   last24hPosted: number;
   last24hViews: number;
-  timeSeries: { date: string; views: number; dailyViews: number }[];
+  timeSeries: { date: string; views: number; reels: number }[];
 };
 
 export type AccountRow = {
@@ -29,13 +29,20 @@ export type AccountRow = {
 
 export async function getGlobalStats(): Promise<GlobalStats> {
   const [totalAccounts, totalReels, topStats, timeSeries, postedCounts] = await Promise.all([
-    prisma.account.count(),
-    prisma.reel.count(),
+    prisma.account.count({
+      where: { posters: { none: { disabled: true } } },
+    }),
+    prisma.reel.count({
+      where: { account: { posters: { none: { disabled: true } } } },
+    }),
 
     prisma.$queryRaw<
       { latestViews: bigint; prevViews: bigint; latestLikes: bigint; latestComments: bigint }[]
     >`
-      WITH ranked_dates AS (
+      WITH disabled_accts AS (
+        SELECT "accountId" FROM posters WHERE disabled = true AND "accountId" IS NOT NULL
+      ),
+      ranked_dates AS (
         SELECT date, ROW_NUMBER() OVER (ORDER BY date DESC) AS rn
         FROM (SELECT DISTINCT date FROM reel_daily_stats) d
       )
@@ -46,21 +53,33 @@ export async function getGlobalStats(): Promise<GlobalStats> {
         COALESCE(SUM(CASE WHEN rd.rn = 1 THEN s.comments ELSE 0 END), 0) AS "latestComments"
       FROM reel_daily_stats s
       JOIN ranked_dates rd ON s.date = rd.date AND rd.rn <= 2
+      JOIN reels r ON r.id = s."reelId"
+      WHERE r."accountId" NOT IN (SELECT "accountId" FROM disabled_accts)
     `,
 
-    prisma.$queryRaw<{ date: Date; views: bigint; likes: bigint; comments: bigint }[]>`
+    prisma.$queryRaw<{ date: Date; views: bigint; reels: bigint }[]>`
+      WITH disabled_accts AS (
+        SELECT "accountId" FROM posters WHERE disabled = true AND "accountId" IS NOT NULL
+      ),
+      latest_snap AS (SELECT MAX(date) AS d FROM reel_daily_stats)
       SELECT
-        s.date,
-        SUM(s.views)    AS views,
-        SUM(s.likes)    AS likes,
-        SUM(s.comments) AS comments
-      FROM reel_daily_stats s
-      GROUP BY s.date
-      ORDER BY s.date ASC
+        DATE(r."publishedAt") AS date,
+        COALESCE(SUM(s.views), 0) AS views,
+        COUNT(DISTINCT r.id) AS reels
+      FROM reels r
+      LEFT JOIN reel_daily_stats s
+        ON s."reelId" = r.id AND s.date = (SELECT d FROM latest_snap)
+      WHERE r."publishedAt" IS NOT NULL
+        AND r."accountId" NOT IN (SELECT "accountId" FROM disabled_accts)
+      GROUP BY DATE(r."publishedAt")
+      ORDER BY date ASC
     `,
 
     prisma.$queryRaw<{ last24hPosted: bigint; last24hViews: bigint }[]>`
-      WITH latest_date AS (SELECT MAX(date) AS d FROM reel_daily_stats)
+      WITH disabled_accts AS (
+        SELECT "accountId" FROM posters WHERE disabled = true AND "accountId" IS NOT NULL
+      ),
+      latest_date AS (SELECT MAX(date) AS d FROM reel_daily_stats)
       SELECT
         COUNT(DISTINCT r.id)       AS "last24hPosted",
         COALESCE(SUM(s.views), 0)  AS "last24hViews"
@@ -69,6 +88,7 @@ export async function getGlobalStats(): Promise<GlobalStats> {
         ON s."reelId" = r.id AND s.date = (SELECT d FROM latest_date)
       WHERE r."publishedAt" IS NOT NULL
         AND r."publishedAt" >= NOW() - INTERVAL '24 hours'
+        AND r."accountId" NOT IN (SELECT "accountId" FROM disabled_accts)
     `,
   ]);
 
@@ -86,15 +106,11 @@ export async function getGlobalStats(): Promise<GlobalStats> {
     last24hPosted: Number(p.last24hPosted),
     last24hViews: Number(p.last24hViews),
     timeSeries: timeSeries.map(
-      (r: { date: Date; views: bigint; likes: bigint; comments: bigint }, i: number) => {
-        const totalViews = Number(r.views);
-        const prevTotalViews = i > 0 ? Number(timeSeries[i - 1].views) : 0;
-        return {
-          date: r.date.toISOString().slice(0, 10),
-          views: totalViews,
-          dailyViews: Math.max(totalViews - prevTotalViews, 0),
-        };
-      },
+      (r: { date: Date; views: bigint; reels: bigint }) => ({
+        date: r.date.toISOString().slice(0, 10),
+        views: Number(r.views),
+        reels: Number(r.reels),
+      }),
     ),
   };
 }
@@ -111,36 +127,99 @@ export type PosterRow = {
   totalPaid: number;
   remaining: number;
   totalViews: number;
+  last24hViews: number;
   username: string | null;
   accountId: string | null;
   payments: { id: number; amount: number; note: string; paidAt: string }[];
   createdAt: string;
 };
 
+/**
+ * Auto-link posters that have no accountId by matching their Instagram
+ * username against Account.username in the DB.
+ */
+async function autoLinkPosters() {
+  const unlinked = await prisma.poster.findMany({
+    where: { accountId: null },
+    select: { id: true, instagramLink: true },
+  });
+
+  if (unlinked.length === 0) return;
+
+  const accounts = await prisma.account.findMany({
+    where: { username: { not: null } },
+    select: { id: true, username: true },
+  });
+
+  const usernameToAccountId = new Map<string, string>();
+  for (const a of accounts) {
+    if (a.username) usernameToAccountId.set(a.username.toLowerCase(), a.id);
+  }
+
+  for (const poster of unlinked) {
+    const match = poster.instagramLink.match(/instagram\.com\/([^\/?#]+)/);
+    if (!match) continue;
+    const handle = match[1].toLowerCase();
+    const accountId = usernameToAccountId.get(handle);
+    if (accountId) {
+      await prisma.poster.update({
+        where: { id: poster.id },
+        data: { accountId },
+      });
+    }
+  }
+}
+
 export async function getPosterRows(): Promise<PosterRow[]> {
+  await autoLinkPosters();
+
   const posters = await prisma.poster.findMany({
+    where: { disabled: false },
     include: {
       payments: { orderBy: { paidAt: "desc" } },
       account: {
-        select: {
-          id: true,
-          username: true,
-          reels: {
-            select: { dailyStats: { orderBy: { date: "desc" }, take: 1 } },
-          },
-        },
+        select: { id: true, username: true },
       },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return posters.map((p) => {
-    let totalViews = 0;
-    if (p.account) {
-      for (const reel of p.account.reels) {
-        totalViews += reel.dailyStats[0]?.views ?? 0;
-      }
+  type PosterWithRelations = (typeof posters)[number];
+
+  const linkedAccountIds = posters
+    .map((p: PosterWithRelations) => p.accountId)
+    .filter((id: string | null): id is string => id !== null);
+
+  // Batch-fetch views per account from the latest snapshot
+  const viewsMap = new Map<string, { totalViews: number; last24hViews: number }>();
+
+  if (linkedAccountIds.length > 0) {
+    type ViewRow = { accountId: string; totalViews: bigint; last24hViews: bigint };
+    const viewRows = await prisma.$queryRaw<ViewRow[]>`
+      WITH latest_date AS (SELECT MAX(date) AS d FROM reel_daily_stats)
+      SELECT
+        r."accountId",
+        COALESCE(SUM(s.views), 0) AS "totalViews",
+        COALESCE(SUM(
+          CASE WHEN r."publishedAt" >= NOW() - INTERVAL '24 hours'
+               THEN s.views ELSE 0 END
+        ), 0) AS "last24hViews"
+      FROM reels r
+      JOIN reel_daily_stats s
+        ON s."reelId" = r.id AND s.date = (SELECT d FROM latest_date)
+      WHERE r."accountId" = ANY(${linkedAccountIds})
+      GROUP BY r."accountId"
+    `;
+    for (const row of viewRows) {
+      viewsMap.set(row.accountId, {
+        totalViews: Number(row.totalViews),
+        last24hViews: Number(row.last24hViews),
+      });
     }
+  }
+
+  return posters.map((p: PosterWithRelations) => {
+    const views = p.accountId ? viewsMap.get(p.accountId) : undefined;
     return {
       id: p.id,
       telegramChatId: p.telegramChatId.toString(),
@@ -152,10 +231,11 @@ export async function getPosterRows(): Promise<PosterRow[]> {
       monthlyRate: p.monthlyRate,
       totalPaid: p.totalPaid,
       remaining: p.monthlyRate - p.totalPaid,
-      totalViews,
+      totalViews: views?.totalViews ?? 0,
+      last24hViews: views?.last24hViews ?? 0,
       username: p.account?.username ?? null,
       accountId: p.accountId,
-      payments: p.payments.map((pay) => ({
+      payments: p.payments.map((pay: PosterWithRelations["payments"][number]) => ({
         id: pay.id,
         amount: pay.amount,
         note: pay.note,
@@ -183,6 +263,9 @@ export async function getAccountRows(): Promise<AccountRow[]> {
 
   const rows = await prisma.$queryRaw<Row[]>`
     WITH
+      disabled_accts AS (
+        SELECT "accountId" FROM posters WHERE disabled = true AND "accountId" IS NOT NULL
+      ),
       latest_date AS (
         SELECT MAX(date) AS d FROM reel_daily_stats
       ),
@@ -245,6 +328,7 @@ export async function getAccountRows(): Promise<AccountRow[]> {
     LEFT JOIN last_24h_posted  l24p ON l24p."accountId" = a.id
     LEFT JOIN last_24h_views   l24v ON l24v."accountId" = a.id
     LEFT JOIN total_reels      tr   ON tr.  "accountId" = a.id
+    WHERE a.id NOT IN (SELECT "accountId" FROM disabled_accts)
     ORDER BY COALESCE(ls.views, 0) DESC
   `;
 

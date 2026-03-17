@@ -14,26 +14,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      style={{
-        padding: "5px 14px",
-        fontSize: 12,
-        fontWeight: 600,
-        fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
-        background: "transparent",
-        color: "var(--slate-500)",
-        border: "1px solid var(--slate-200)",
-        borderRadius: 7,
-        cursor: "pointer",
-        transition: "all 0.12s",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = "#fca5a5";
-        (e.currentTarget as HTMLButtonElement).style.color = "#dc2626";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--slate-200)";
-        (e.currentTarget as HTMLButtonElement).style.color = "var(--slate-500)";
-      }}
+      className="px-3 py-1 text-xs font-semibold bg-transparent text-slate-500 border border-slate-200 rounded-[7px] cursor-pointer transition-colors hover:border-red-300 hover:text-red-600"
     >
       Sign out
     </button>

@@ -17,3 +17,26 @@
     transform: translateY(0);
   }
 }
+
+/* Prevent iOS tap-highlight and improve touch targets */
+@layer base {
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  @media (min-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: inherit;
+    }
+  }
+}

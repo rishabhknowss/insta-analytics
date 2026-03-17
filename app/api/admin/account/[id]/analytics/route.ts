@@ -20,30 +20,34 @@ export async function GET(
   const toDate   = to   && ISO_DATE.test(to)   ? new Date(to)   : null;
 
   const rows = await prisma.$queryRaw<
-    { date: Date; views: bigint; likes: bigint; comments: bigint }[]
+    { date: Date; views: bigint; likes: bigint; comments: bigint; reels: bigint }[]
   >`
+    WITH latest_snap AS (SELECT MAX(date) AS d FROM reel_daily_stats)
     SELECT
-      s.date,
-      SUM(s.views)    AS views,
-      SUM(s.likes)    AS likes,
-      SUM(s.comments) AS comments
-    FROM reel_daily_stats s
-    JOIN reels r ON r.id = s."reelId"
+      DATE(r."publishedAt") AS date,
+      COALESCE(SUM(s.views), 0)    AS views,
+      COALESCE(SUM(s.likes), 0)    AS likes,
+      COALESCE(SUM(s.comments), 0) AS comments,
+      COUNT(DISTINCT r.id)         AS reels
+    FROM reels r
+    LEFT JOIN reel_daily_stats s
+      ON s."reelId" = r.id AND s.date = (SELECT d FROM latest_snap)
     WHERE r."accountId" = ${id}
-      AND (${fromDate}::date IS NULL OR s.date >= ${fromDate}::date)
-      AND (${toDate}::date IS NULL OR s.date <= ${toDate}::date)
-    GROUP BY s.date
-    ORDER BY s.date ASC
+      AND r."publishedAt" IS NOT NULL
+      AND (${fromDate}::date IS NULL OR DATE(r."publishedAt") >= ${fromDate}::date)
+      AND (${toDate}::date IS NULL OR DATE(r."publishedAt") <= ${toDate}::date)
+    GROUP BY DATE(r."publishedAt")
+    ORDER BY date ASC
   `;
 
-  const series = rows.map((r: { date: Date; views: bigint; likes: bigint; comments: bigint }) => ({
+  const series = rows.map((r) => ({
     date: r.date.toISOString().slice(0, 10),
     views: Number(r.views),
     likes: Number(r.likes),
     comments: Number(r.comments),
+    reels: Number(r.reels),
   }));
 
-  // Latest vs previous day comparison
   const last2 = series.slice(-2);
   const latest = last2[1] ?? null;
   const previous = last2[0] ?? null;

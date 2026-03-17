@@ -9,6 +9,11 @@ import {
 
 const VALID_MANAGERS = ["ROHIT", "UJJWAL", "RISHABH"] as const;
 
+const RATE_TIERS: Record<number, number> = {
+  300: 1500,
+  500: 2000,
+};
+
 function getAdminIds(): Set<number> {
   const raw = process.env.TELEGRAM_ADMIN_IDS ?? "";
   return new Set(
@@ -19,8 +24,8 @@ function getAdminIds(): Set<number> {
   );
 }
 
-function escapeHtml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function isPrivateChat(type: string) {
+  return type === "private";
 }
 
 export async function POST(req: NextRequest) {
@@ -34,20 +39,24 @@ export async function POST(req: NextRequest) {
   if (!msg?.text) return NextResponse.json({ ok: true });
 
   const chatId = msg.chat.id;
+  const chatType = msg.chat.type;
   const userId = msg.from?.id;
   const text = msg.text.trim();
 
   if (!text.startsWith("/")) return NextResponse.json({ ok: true });
 
-  // Only allow admins to run commands
   const adminIds = getAdminIds();
   if (!userId || !adminIds.has(userId)) {
-    await sendMessage(chatId, "⛔ You are not authorized to use this bot.");
     return NextResponse.json({ ok: true });
   }
 
   const [rawCmd, ...args] = text.split(/\s+/);
   const cmd = rawCmd.toLowerCase().replace(/@\w+$/, "");
+
+  // Backfill missing group link on any command from a registered group
+  if (!isPrivateChat(chatType)) {
+    backfillGroupLink(chatId, msg.chat).catch(() => {});
+  }
 
   try {
     switch (cmd) {
@@ -60,30 +69,63 @@ export async function POST(req: NextRequest) {
       case "/manage":
         await handleManage(chatId, args);
         break;
-      case "/rate":
-        await handleRate(chatId, args);
-        break;
-      case "/stats":
-        await handleStats(chatId);
-        break;
       case "/info":
         await handleInfo(chatId);
         break;
+      case "/stats":
+        if (!isPrivateChat(chatType)) {
+          await sendMessage(chatId, "DM me for this.");
+          break;
+        }
+        await handleStats(chatId);
+        break;
       case "/list":
+        if (!isPrivateChat(chatType)) {
+          await sendMessage(chatId, "DM me for this.");
+          break;
+        }
         await handleList(chatId);
         break;
       case "/help":
-        await handleHelp(chatId);
+        await handleHelp(chatId, isPrivateChat(chatType));
         break;
       default:
         break;
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : "Unknown error";
-    await sendMessage(chatId, `❌ Error: ${escapeHtml(errMsg)}`);
+    await sendMessage(chatId, `Error: ${errMsg}`);
   }
 
   return NextResponse.json({ ok: true });
+}
+
+async function backfillGroupLink(
+  chatId: number,
+  chat: { title?: string; username?: string },
+) {
+  const poster = await prisma.poster.findUnique({
+    where: { telegramChatId: BigInt(chatId) },
+  });
+  if (!poster || poster.groupLink) return;
+
+  let groupLink = chat.username ? `https://t.me/${chat.username}` : "";
+  if (!groupLink) {
+    const chatInfo = await getChat(chatId);
+    if (chatInfo?.invite_link) {
+      groupLink = chatInfo.invite_link;
+    } else {
+      const inviteLink = await getChatInviteLink(chatId);
+      if (inviteLink) groupLink = inviteLink;
+    }
+  }
+
+  if (groupLink) {
+    await prisma.poster.update({
+      where: { id: poster.id },
+      data: { groupLink },
+    });
+  }
 }
 
 async function handleAdd(
@@ -93,7 +135,7 @@ async function handleAdd(
 ) {
   const instaLink = args[0];
   if (!instaLink || !instaLink.includes("instagram.com")) {
-    await sendMessage(chatId, "Usage: <code>/add https://instagram.com/username</code>");
+    await sendMessage(chatId, "<code>/add https://instagram.com/username</code>");
     return;
   }
 
@@ -101,15 +143,22 @@ async function handleAdd(
     where: { telegramChatId: BigInt(chatId) },
   });
   if (existing) {
-    await sendMessage(chatId, "⚠️ This group already has a poster registered. Use /info to see details.");
+    await sendMessage(chatId, "Already registered.");
     return;
   }
 
   const channelName = chat.title ?? "Unknown";
   let groupLink = chat.username ? `https://t.me/${chat.username}` : "";
   if (!groupLink) {
-    const inviteLink = await getChatInviteLink(chatId);
-    if (inviteLink) groupLink = inviteLink;
+    // Try getChat first — returns existing invite_link without admin rights
+    const chatInfo = await getChat(chatId);
+    if (chatInfo?.invite_link) {
+      groupLink = chatInfo.invite_link;
+    } else {
+      // Needs bot to be admin with invite perms
+      const inviteLink = await getChatInviteLink(chatId);
+      if (inviteLink) groupLink = inviteLink;
+    }
   }
 
   await prisma.poster.create({
@@ -121,20 +170,13 @@ async function handleAdd(
     },
   });
 
-  await sendMessage(
-    chatId,
-    `✅ <b>Poster registered!</b>\n\n` +
-    `📸 Instagram: ${escapeHtml(instaLink)}\n` +
-    `💬 Group: ${escapeHtml(channelName)}\n` +
-    `🔗 Link: ${groupLink ? escapeHtml(groupLink) : "N/A"}\n\n` +
-    `Use /manage to assign a manager, /rate to set monthly rate.`,
-  );
+  await sendMessage(chatId, "Done.");
 }
 
 async function handlePaid(chatId: number, args: string[]) {
   const amount = parseInt(args[0], 10);
   if (!amount || amount <= 0) {
-    await sendMessage(chatId, "Usage: <code>/paid 500</code>");
+    await sendMessage(chatId, "<code>/paid 500</code>");
     return;
   }
 
@@ -143,8 +185,14 @@ async function handlePaid(chatId: number, args: string[]) {
     where: { telegramChatId: BigInt(chatId) },
   });
   if (!poster) {
-    await sendMessage(chatId, "⚠️ No poster registered in this group. Use /add first.");
+    await sendMessage(chatId, "Not registered. Use /add first.");
     return;
+  }
+
+  // First payment auto-detects the rate tier
+  let monthlyRate = poster.monthlyRate;
+  if (poster.totalPaid === 0 && amount in RATE_TIERS) {
+    monthlyRate = RATE_TIERS[amount];
   }
 
   await prisma.payment.create({
@@ -158,31 +206,25 @@ async function handlePaid(chatId: number, args: string[]) {
   const totalPaid = agg._sum.amount ?? 0;
 
   const paidStatus =
-    totalPaid >= poster.monthlyRate ? "PAID" : totalPaid > 0 ? "PARTIAL" : "UNPAID";
+    totalPaid >= monthlyRate ? "PAID" : totalPaid > 0 ? "PARTIAL" : "UNPAID";
 
   await prisma.poster.update({
     where: { id: poster.id },
-    data: { totalPaid, paidStatus },
+    data: { totalPaid, paidStatus, monthlyRate },
   });
 
-  const remaining = Math.max(poster.monthlyRate - totalPaid, 0);
+  const remaining = Math.max(monthlyRate - totalPaid, 0);
 
   await sendMessage(
     chatId,
-    `💰 <b>Payment recorded: ₹${amount.toLocaleString()}</b>${note ? ` (${escapeHtml(note)})` : ""}\n\n` +
-    `Total paid: ₹${totalPaid.toLocaleString()} / ₹${poster.monthlyRate.toLocaleString()}\n` +
-    `Remaining: ₹${remaining.toLocaleString()}\n` +
-    `Status: <b>${paidStatus}</b>`,
+    `+₹${amount}${note ? ` (${note})` : ""}\n₹${totalPaid} / ₹${monthlyRate} — ₹${remaining} left`,
   );
 }
 
 async function handleManage(chatId: number, args: string[]) {
   const name = args[0]?.toUpperCase();
   if (!name || !VALID_MANAGERS.includes(name as (typeof VALID_MANAGERS)[number])) {
-    await sendMessage(
-      chatId,
-      `Usage: <code>/manage name</code>\nValid: ${VALID_MANAGERS.join(", ").toLowerCase()}`,
-    );
+    await sendMessage(chatId, "<code>/manage rohit|ujjwal|rishabh</code>");
     return;
   }
 
@@ -190,7 +232,7 @@ async function handleManage(chatId: number, args: string[]) {
     where: { telegramChatId: BigInt(chatId) },
   });
   if (!poster) {
-    await sendMessage(chatId, "⚠️ No poster registered in this group. Use /add first.");
+    await sendMessage(chatId, "Not registered. Use /add first.");
     return;
   }
 
@@ -199,86 +241,73 @@ async function handleManage(chatId: number, args: string[]) {
     data: { managedBy: name as (typeof VALID_MANAGERS)[number] },
   });
 
-  await sendMessage(chatId, `✅ Manager set to <b>${name}</b>`);
-}
-
-async function handleRate(chatId: number, args: string[]) {
-  const rate = parseInt(args[0], 10);
-  if (!rate || rate <= 0) {
-    await sendMessage(chatId, "Usage: <code>/rate 2000</code>");
-    return;
-  }
-
-  const poster = await prisma.poster.findUnique({
-    where: { telegramChatId: BigInt(chatId) },
-  });
-  if (!poster) {
-    await sendMessage(chatId, "⚠️ No poster registered in this group. Use /add first.");
-    return;
-  }
-
-  const paidStatus =
-    poster.totalPaid >= rate ? "PAID" : poster.totalPaid > 0 ? "PARTIAL" : "UNPAID";
-
-  await prisma.poster.update({
-    where: { id: poster.id },
-    data: { monthlyRate: rate, paidStatus },
-  });
-
-  await sendMessage(chatId, `✅ Monthly rate set to <b>₹${rate.toLocaleString()}</b>`);
-}
-
-async function handleStats(chatId: number) {
-  const [total, paidCount, totalPaid, totalRate] = await Promise.all([
-    prisma.poster.count(),
-    prisma.poster.count({ where: { paidStatus: "PAID" } }),
-    prisma.poster.aggregate({ _sum: { totalPaid: true } }),
-    prisma.poster.aggregate({ _sum: { monthlyRate: true } }),
-  ]);
-
-  const paid = totalPaid._sum.totalPaid ?? 0;
-  const rate = totalRate._sum.monthlyRate ?? 0;
-  const remaining = Math.max(rate - paid, 0);
-
-  await sendMessage(
-    chatId,
-    `📊 <b>Overall Stats</b>\n\n` +
-    `Posters: ${total}\n` +
-    `Fully paid: ${paidCount} / ${total}\n` +
-    `Total paid: ₹${paid.toLocaleString()}\n` +
-    `Total due: ₹${rate.toLocaleString()}\n` +
-    `Remaining: ₹${remaining.toLocaleString()}`,
-  );
+  await sendMessage(chatId, `Manager: ${name}`);
 }
 
 async function handleInfo(chatId: number) {
   const poster = await prisma.poster.findUnique({
     where: { telegramChatId: BigInt(chatId) },
-    include: { payments: { orderBy: { paidAt: "desc" }, take: 5 } },
+    include: { payments: { orderBy: { paidAt: "desc" }, take: 3 } },
   });
 
   if (!poster) {
-    await sendMessage(chatId, "⚠️ No poster registered in this group. Use /add first.");
+    await sendMessage(chatId, "Not registered. Use /add first.");
     return;
   }
 
   const remaining = Math.max(poster.monthlyRate - poster.totalPaid, 0);
   let text =
-    `📋 <b>Poster Info</b>\n\n` +
-    `📸 ${escapeHtml(poster.instagramLink)}\n` +
-    `💬 ${escapeHtml(poster.channelName)}\n` +
-    `👤 Manager: <b>${poster.managedBy}</b>\n` +
-    `💰 Rate: ₹${poster.monthlyRate.toLocaleString()}\n` +
-    `✅ Paid: ₹${poster.totalPaid.toLocaleString()}\n` +
-    `⏳ Remaining: ₹${remaining.toLocaleString()}\n` +
-    `📌 Status: <b>${poster.paidStatus}</b>`;
+    `₹${poster.totalPaid} / ₹${poster.monthlyRate}` +
+    ` — ₹${remaining} left` +
+    `\n${poster.paidStatus} · ${poster.managedBy}`;
 
   if (poster.payments.length > 0) {
-    text += `\n\n<b>Recent payments:</b>`;
     for (const p of poster.payments) {
       const date = p.paidAt.toISOString().slice(0, 10);
-      text += `\n  ₹${p.amount.toLocaleString()} on ${date}${p.note ? ` — ${escapeHtml(p.note)}` : ""}`;
+      text += `\n  ₹${p.amount} ${date}${p.note ? ` ${p.note}` : ""}`;
     }
+  }
+
+  await sendMessage(chatId, text);
+}
+
+// DM-only commands below
+
+async function handleStats(chatId: number) {
+  const active = { disabled: false };
+  const removed = { disabled: true };
+
+  const [
+    activeCount, activePaid, activePartial,
+    activeTotalPaid, activeTotalRate,
+    removedCount, removedTotalPaid, removedTotalRate,
+  ] = await Promise.all([
+    prisma.poster.count({ where: active }),
+    prisma.poster.count({ where: { ...active, paidStatus: "PAID" } }),
+    prisma.poster.count({ where: { ...active, paidStatus: "PARTIAL" } }),
+    prisma.poster.aggregate({ where: active, _sum: { totalPaid: true } }),
+    prisma.poster.aggregate({ where: active, _sum: { monthlyRate: true } }),
+    prisma.poster.count({ where: removed }),
+    prisma.poster.aggregate({ where: removed, _sum: { totalPaid: true } }),
+    prisma.poster.aggregate({ where: removed, _sum: { monthlyRate: true } }),
+  ]);
+
+  const paid = activeTotalPaid._sum.totalPaid ?? 0;
+  const rate = activeTotalRate._sum.monthlyRate ?? 0;
+  const remaining = Math.max(rate - paid, 0);
+  const unpaid = activeCount - activePaid - activePartial;
+
+  let text =
+    `<b>Active — ${activeCount} posters</b>\n` +
+    `${activePaid} paid · ${activePartial} partial · ${unpaid} unpaid\n` +
+    `₹${paid.toLocaleString()} / ₹${rate.toLocaleString()} — ₹${remaining.toLocaleString()} left`;
+
+  if (removedCount > 0) {
+    const rPaid = removedTotalPaid._sum.totalPaid ?? 0;
+    const rRate = removedTotalRate._sum.monthlyRate ?? 0;
+    text +=
+      `\n\n<b>Removed — ${removedCount}</b>\n` +
+      `₹${rPaid.toLocaleString()} / ₹${rRate.toLocaleString()} collected`;
   }
 
   await sendMessage(chatId, text);
@@ -287,35 +316,47 @@ async function handleInfo(chatId: number) {
 async function handleList(chatId: number) {
   const posters = await prisma.poster.findMany({
     orderBy: { createdAt: "desc" },
-    take: 30,
+    take: 100,
   });
 
   if (posters.length === 0) {
-    await sendMessage(chatId, "No posters registered yet.");
+    await sendMessage(chatId, "No posters yet.");
     return;
   }
 
-  let text = `📋 <b>All Posters (${posters.length})</b>\n`;
-  for (const p of posters) {
-    const status = p.paidStatus === "PAID" ? "✅" : p.paidStatus === "PARTIAL" ? "🟡" : "🔴";
+  const active = posters.filter((p) => !p.disabled);
+  const removed = posters.filter((p) => p.disabled);
+
+  function formatLine(p: (typeof posters)[number]) {
+    const dot = p.paidStatus === "PAID" ? "+" : p.paidStatus === "PARTIAL" ? "~" : "-";
     const handle = p.instagramLink.replace(/https?:\/\/(www\.)?instagram\.com\//, "@").replace(/\/$/, "");
-    text += `\n${status} ${escapeHtml(handle)} — ₹${p.totalPaid}/${p.monthlyRate} [${p.managedBy}]`;
+    return `${dot} ${handle} ₹${p.totalPaid}/${p.monthlyRate} [${p.managedBy}]`;
+  }
+
+  let text = `<b>Active — ${active.length}</b>\n`;
+  for (const p of active) text += `\n${formatLine(p)}`;
+
+  if (removed.length > 0) {
+    text += `\n\n<b>Removed — ${removed.length}</b>\n`;
+    for (const p of removed) {
+      const handle = p.instagramLink.replace(/https?:\/\/(www\.)?instagram\.com\//, "@").replace(/\/$/, "");
+      text += `\nx ${handle} ₹${p.totalPaid}/${p.monthlyRate}`;
+    }
   }
 
   await sendMessage(chatId, text);
 }
 
-async function handleHelp(chatId: number) {
-  await sendMessage(
-    chatId,
-    `🤖 <b>Bot Commands</b>\n\n` +
-    `<code>/add &lt;insta_link&gt;</code> — Register poster (auto-detects group)\n` +
-    `<code>/paid &lt;amount&gt; [note]</code> — Record a payment\n` +
-    `<code>/manage &lt;name&gt;</code> — Assign manager (rohit/ujjwal/rishabh)\n` +
-    `<code>/rate &lt;amount&gt;</code> — Set monthly rate\n` +
-    `<code>/info</code> — Show this group's poster details\n` +
-    `<code>/stats</code> — Overall payment stats\n` +
-    `<code>/list</code> — List all posters\n` +
-    `<code>/help</code> — Show this message`,
-  );
+async function handleHelp(chatId: number, isDm: boolean) {
+  let text =
+    `/add &lt;link&gt; — register\n` +
+    `/paid &lt;amt&gt; — payment\n` +
+    `/manage &lt;name&gt; — assign\n` +
+    `/info — details`;
+
+  if (isDm) {
+    text += `\n/stats — overview\n/list — all posters`;
+  }
+
+  await sendMessage(chatId, text);
 }
