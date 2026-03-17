@@ -46,8 +46,9 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
                 Reel Analytics
               </span>
             </a>
-            <nav style={{ display: "flex", gap: 2 }}>
-              <a href="/admin" className="nav-link">Overview</a>
+            <nav className="flex gap-0.5">
+              <a href="/admin" className="text-[13px] font-medium text-slate-500 no-underline px-3 py-1.5 rounded-[7px] hover:bg-slate-100 hover:text-slate-900 transition-colors">Overview</a>
+              <a href="/admin/manage" className="text-[13px] font-medium text-slate-500 no-underline px-3 py-1.5 rounded-[7px] hover:bg-slate-100 hover:text-slate-900 transition-colors">Manage</a>
             </nav>
           </div>
 

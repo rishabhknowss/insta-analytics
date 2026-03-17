@@ -17,11 +17,9 @@ export async function GET(_req: NextRequest) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
+    // Only request the two scopes this app actually uses
     scope: [
       "instagram_business_basic",
-      "instagram_business_manage_messages",
-      "instagram_business_manage_comments",
-      "instagram_business_content_publish",
       "instagram_business_manage_insights",
     ].join(","),
   });

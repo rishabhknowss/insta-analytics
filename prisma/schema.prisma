@@ -14,7 +14,8 @@ model Account {
   createdAt      DateTime  @default(now())
   lastSeenAt     DateTime  @default(now())
 
-  reels Reel[]
+  reels   Reel[]
+  posters Poster[]
 
   @@map("accounts")
 }
@@ -47,4 +48,49 @@ model ReelDailyStat {
 
   @@unique([reelId, date])
   @@map("reel_daily_stats")
+}
+
+enum PaidStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum Manager {
+  ROHIT
+  UJJWAL
+  RISHABH
+}
+
+model Poster {
+  id             Int        @id @default(autoincrement())
+  telegramChatId BigInt     @unique
+  accountId      String?
+  instagramLink  String
+  channelName    String
+  groupLink      String     @default("")
+  managedBy      Manager    @default(RISHABH)
+  paidStatus     PaidStatus @default(UNPAID)
+  monthlyRate    Int        @default(1500)
+  totalPaid      Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  account  Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  payments Payment[]
+
+  @@map("posters")
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  posterId  Int
+  amount    Int
+  note      String   @default("")
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  poster Poster @relation(fields: [posterId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }

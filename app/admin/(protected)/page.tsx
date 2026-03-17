@@ -1,42 +1,6 @@
-import { headers } from "next/headers";
 import RunSnapshotButton from "./_components/RunSnapshotButton";
 import GlobalChart from "./_components/GlobalChart";
-
-type GlobalStats = {
-  totalAccounts: number;
-  totalReels: number;
-  latestViews: number;
-  prevViews: number;
-  viewsDelta: number;
-  latestLikes: number;
-  latestComments: number;
-  last24hPosted: number;
-  last24hViews: number;
-  timeSeries: { date: string; views: number; dailyViews: number }[];
-};
-
-type AccountRow = {
-  id: string;
-  username: string | null;
-  last24hPosted: number;
-  last24hViews: number;
-  mvReelId: string | null;
-  mvPermalink: string | null;
-  mvThumbnail: string | null;
-  mvViews: number;
-  mvLikes: number;
-  totalReels: number;
-  totalViews: number;
-};
-
-async function fetchAdmin<T>(path: string, cookieHeader: string): Promise<T> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${path}`, {
-    cache: "no-store",
-    headers: { cookie: cookieHeader },
-  });
-  if (!res.ok) throw new Error(`Fetch failed: ${path}`);
-  return res.json();
-}
+import { getGlobalStats, getAccountRows, type GlobalStats, type AccountRow } from "@/lib/adminQueries";
 
 function StatCard({
   label, value, sub, accent, delta,
@@ -78,17 +42,14 @@ function StatCard({
 }
 
 export default async function AdminPage() {
-  const headerStore = await headers();
-  const cookieHeader = headerStore.get("cookie") ?? "";
-
   let stats: GlobalStats | null = null;
   let accounts: AccountRow[] = [];
   let error: string | null = null;
 
   try {
     [stats, accounts] = await Promise.all([
-      fetchAdmin<GlobalStats>("/api/admin/global-stats", cookieHeader),
-      fetchAdmin<AccountRow[]>("/api/admin/accounts", cookieHeader),
+      getGlobalStats(),
+      getAccountRows(),
     ]);
   } catch {
     error = "Could not load data. Check DATABASE_URL and run migrations.";
