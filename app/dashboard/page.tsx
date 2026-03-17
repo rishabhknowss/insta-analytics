@@ -106,10 +106,11 @@ export default async function DashboardPage() {
               <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h2 className="text-xl font-bold mb-2">Session expired</h2>
-          <p className="text-slate-500 text-sm mb-6">Please reconnect your Instagram account to view analytics.</p>
+          <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
+          <p className="text-slate-500 text-sm mb-2">Could not load your reels from Instagram.</p>
+          <p className="text-red-500 text-xs mb-6 break-all bg-red-50 rounded-lg p-3 text-left">{error}</p>
           <a href="/" className="inline-flex items-center justify-center bg-linear-to-br from-blue-600 to-blue-500 text-white font-semibold text-sm py-2.5 px-6 rounded-lg no-underline">
-            Back to home
+            Try again
           </a>
         </div>
       </div>

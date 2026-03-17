@@ -10,12 +10,15 @@ export async function fetchJson<T>(
     ...(searchParams ?? {}),
   });
 
-  const res = await fetch(`${META_GRAPH_BASE}${path}?${params.toString()}`);
+  const url = `${META_GRAPH_BASE}${path}?${params.toString()}`;
+  const res = await fetch(url);
+  const text = await res.text();
 
   if (!res.ok) {
-    throw new Error(`Meta API error on ${path}: ${res.status}`);
+    console.error(`[metaApi] ${path} failed (${res.status}):`, text.slice(0, 500));
+    throw new Error(`Instagram API error on ${path}: ${res.status} — ${text.slice(0, 200)}`);
   }
 
-  return (await res.json()) as T;
+  return JSON.parse(text) as T;
 }
 
