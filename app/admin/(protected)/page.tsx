@@ -12,7 +12,7 @@ type GlobalStats = {
   latestComments: number;
   last24hPosted: number;
   last24hViews: number;
-  timeSeries: { date: string; views: number }[];
+  timeSeries: { date: string; views: number; dailyViews: number }[];
 };
 
 type AccountRow = {

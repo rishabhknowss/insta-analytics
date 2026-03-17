@@ -67,9 +67,14 @@ export async function GET(req: NextRequest) {
     latestComments: Number(t.latestComments),
     last24hPosted: Number(p.last24hPosted),
     last24hViews: Number(p.last24hViews),
-    timeSeries: timeSeries.map((r: { date: Date; views: bigint; likes: bigint; comments: bigint }) => ({
-      date: r.date.toISOString().slice(0, 10),
-      views: Number(r.views),
-    })),
+    timeSeries: timeSeries.map((r: { date: Date; views: bigint; likes: bigint; comments: bigint }, i: number) => {
+      const totalViews = Number(r.views);
+      const prevTotalViews = i > 0 ? Number(timeSeries[i - 1].views) : 0;
+      return {
+        date: r.date.toISOString().slice(0, 10),
+        views: totalViews,
+        dailyViews: Math.max(totalViews - prevTotalViews, 0),
+      };
+    }),
   });
 }
