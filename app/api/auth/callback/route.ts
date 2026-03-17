@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { setSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 
 const INSTAGRAM_OAUTH_TOKEN = "https://api.instagram.com/oauth/access_token";
+const SESSION_COOKIE_NAME = "auth_session";
 
 async function exchangeCodeForToken(code: string) {
   const clientId = process.env.META_APP_ID;
@@ -28,7 +29,8 @@ async function exchangeCodeForToken(code: string) {
   });
 
   if (!res.ok) {
-    throw new Error("Failed to exchange code for access token");
+    const text = await res.text();
+    throw new Error(`Token exchange failed: ${text}`);
   }
 
   return (await res.json()) as {
@@ -41,13 +43,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? `http://localhost:3000`;
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
-  if (error) {
-    return NextResponse.redirect(`${base}/`);
-  }
-
-  if (!code) {
+  if (error || !code) {
     return NextResponse.redirect(`${base}/`);
   }
 
@@ -56,13 +54,7 @@ export async function GET(req: NextRequest) {
     const igUserId = String(tokenData.user_id);
     const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60;
 
-    await setSession({
-      accessToken: tokenData.access_token,
-      igUserId,
-      expiresAt,
-    });
-
-    // Fetch username from Instagram
+    // Fetch username
     let username: string | null = null;
     try {
       const profileRes = await fetch(
@@ -74,6 +66,7 @@ export async function GET(req: NextRequest) {
       }
     } catch { /* non-fatal */ }
 
+    // Save to DB
     await prisma.account.upsert({
       where: { id: igUserId },
       update: {
@@ -90,9 +83,27 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.redirect(`${base}/dashboard`);
-  } catch {
-    return NextResponse.redirect(`${base}/`);
+    // Build redirect response with cookie set directly on it
+    const secret = process.env.SESSION_SECRET;
+    if (!secret) throw new Error("SESSION_SECRET not set");
+
+    const token = jwt.sign(
+      { accessToken: tokenData.access_token, igUserId, expiresAt },
+      secret,
+    );
+
+    const response = NextResponse.redirect(`${base}/dashboard`);
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: true,
+      maxAge: 60 * 60,
+      path: "/",
+    });
+
+    return response;
+  } catch (err) {
+    console.error("[auth/callback] Error:", err instanceof Error ? err.message : err);
+    return NextResponse.redirect(`${base}/?error=auth_failed`);
   }
 }
-
