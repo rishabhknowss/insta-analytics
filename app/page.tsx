@@ -1,104 +1,54 @@
 export default function Home() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #f0f9ff 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-        fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-sky-50 flex flex-col items-center justify-center p-6">
       {/* Logo mark */}
-      <div
-        className="animate-up"
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: 14,
-          background: "linear-gradient(135deg, #2563eb, #3b82f6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 28,
-          boxShadow: "0 8px 24px rgba(37,99,235,0.25)",
-        }}
-      >
+      <div className="animate-fade-up w-[52px] h-[52px] rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center mb-7 shadow-[0_8px_24px_rgba(37,99,235,0.25)]">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            stroke="white"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
 
-      <div
-        className="card animate-up animate-up-1"
-        style={{
-          width: "100%",
-          maxWidth: 440,
-          padding: "40px 40px 36px",
-          textAlign: "center",
-        }}
-      >
+      <div className="animate-fade-up [animation-delay:0.05s] w-full max-w-[440px] px-10 pt-10 pb-9 text-center bg-white border border-slate-200 rounded-xl">
         {/* Badge */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: "var(--blue-50)",
-            border: "1px solid var(--blue-100)",
-            borderRadius: 999,
-            padding: "4px 12px",
-            marginBottom: 20,
-          }}
-        >
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--blue-500)" }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--blue-600)", letterSpacing: "0.05em" }}>
+        <div className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-3 py-1 mb-5">
+          <div className="w-[7px] h-[7px] rounded-full bg-blue-500" />
+          <span className="text-xs font-semibold text-blue-600 tracking-[0.05em]">
             INSTAGRAM ANALYTICS
           </span>
         </div>
 
-        <h1
-          style={{
-            fontFamily: "var(--font-syne), sans-serif",
-            fontSize: 28,
-            fontWeight: 800,
-            color: "var(--slate-900)",
-            marginBottom: 12,
-            lineHeight: 1.2,
-          }}
-        >
+        <h1 className="text-[28px] font-bold text-slate-900 mb-3 leading-tight tracking-tight">
           Reel Analytics
         </h1>
-        <p
-          style={{
-            color: "var(--slate-500)",
-            fontSize: 15,
-            lineHeight: 1.6,
-            marginBottom: 32,
-          }}
-        >
+        <p className="text-slate-500 text-[15px] leading-relaxed mb-8">
           Connect your Instagram account and track views, likes, and comments
           for all your Reels — updated daily.
         </p>
 
-        <a href="/api/auth/login" className="btn-cta">
+        <a
+          href="/api/auth/login"
+          className="inline-flex items-center justify-center gap-2 w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-semibold text-sm py-3.5 px-7 rounded-[10px] no-underline shadow-[0_4px_14px_rgba(37,99,235,0.3)] hover:-translate-y-px hover:shadow-[0_6px_20px_rgba(37,99,235,0.4)] transition-all"
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="2" width="20" height="20" rx="5" stroke="white" strokeWidth="2"/>
-            <circle cx="12" cy="12" r="4" stroke="white" strokeWidth="2"/>
-            <circle cx="17.5" cy="6.5" r="1" fill="white"/>
+            <rect x="2" y="2" width="20" height="20" rx="5" stroke="white" strokeWidth="2" />
+            <circle cx="12" cy="12" r="4" stroke="white" strokeWidth="2" />
+            <circle cx="17.5" cy="6.5" r="1" fill="white" />
           </svg>
           Connect Instagram
         </a>
 
-        <p style={{ marginTop: 16, fontSize: 12, color: "var(--slate-400)" }}>
+        <p className="mt-4 text-xs text-slate-400">
           Requires a Business or Creator Instagram account
         </p>
       </div>
 
-      <p className="animate-up animate-up-2" style={{ marginTop: 24, fontSize: 12, color: "var(--slate-400)" }}>
+      <p className="animate-fade-up [animation-delay:0.1s] mt-6 text-xs text-slate-400">
         Internal analytics tool · Not a public service
       </p>
     </div>

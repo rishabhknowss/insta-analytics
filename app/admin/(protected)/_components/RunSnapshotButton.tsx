@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function RunSnapshotButton({ adminSecret }: { adminSecret: string }) {
+export default function RunSnapshotButton() {
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [result, setResult] = useState<string | null>(null);
 
@@ -10,11 +10,8 @@ export default function RunSnapshotButton({ adminSecret }: { adminSecret: string
     setState("loading");
     setResult(null);
     try {
-      const res = await fetch("/api/admin/run-snapshot", {
-        method: "POST",
-        headers: { "x-admin-secret": adminSecret },
-      });
-      const data = await res.json();
+      const res = await fetch("/api/admin/run-snapshot", { method: "POST" });
+      const data = await res.json() as { snapshotted?: number; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Unknown error");
       setState("success");
       setResult(`✓ Snapshotted ${data.snapshotted} reels`);

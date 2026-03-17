@@ -1,4 +1,12 @@
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+import { redirect } from "next/navigation";
+import { getAdminSession } from "@/lib/adminAuth";
+import LogoutButton from "./_components/LogoutButton";
+import ScrollNavbar from "./_components/ScrollNavbar";
+
+export default async function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
+  const authed = await getAdminSession();
+  if (!authed) redirect("/admin/login");
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -6,13 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
     }}>
       {/* Top nav */}
-      <header style={{
-        background: "var(--white)",
-        borderBottom: "1px solid var(--slate-200)",
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-      }}>
+      <ScrollNavbar>
         <div style={{
           maxWidth: 1280,
           margin: "0 auto",
@@ -44,29 +46,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Reel Analytics
               </span>
             </a>
-
             <nav style={{ display: "flex", gap: 2 }}>
               <a href="/admin" className="nav-link">Overview</a>
             </nav>
           </div>
 
-          {/* Admin badge */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 12px",
-            background: "var(--blue-50)",
-            border: "1px solid var(--blue-100)",
-            borderRadius: 999,
-          }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--blue-500)" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--blue-600)", letterSpacing: "0.04em" }}>
-              ADMIN
-            </span>
+          {/* Right side */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 12px",
+              background: "var(--blue-50)",
+              border: "1px solid var(--blue-100)",
+              borderRadius: 999,
+            }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--blue-500)" }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--blue-600)", letterSpacing: "0.04em" }}>
+                ADMIN
+              </span>
+            </div>
+            <LogoutButton />
           </div>
         </div>
-      </header>
+      </ScrollNavbar>
 
       {/* Page content */}
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px" }}>
