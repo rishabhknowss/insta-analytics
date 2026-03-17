@@ -36,7 +36,7 @@ export async function GET(
     ORDER BY s.date ASC
   `;
 
-  const series = rows.map((r) => ({
+  const series = rows.map((r: { date: Date; views: bigint; likes: bigint; comments: bigint }) => ({
     date: r.date.toISOString().slice(0, 10),
     views: Number(r.views),
     likes: Number(r.likes),
