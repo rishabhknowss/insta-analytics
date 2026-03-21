@@ -24,10 +24,10 @@ async function getReels() {
 
   console.log("[dashboard] fetching media for", session.igUserId);
   const mediaData = await fetchJson<{ data?: MediaItem[] }>(
-    `/${session.igUserId}/media`,
+    `/me/media`,
     session.accessToken,
     {
-      fields: "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,is_shared_to_feed",
+      fields: "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp",
       limit: "25",
     },
   );

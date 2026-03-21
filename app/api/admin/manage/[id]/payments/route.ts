@@ -40,15 +40,7 @@ export async function POST(
 
     const p = await tx.poster.update({
       where: { id: posterId },
-      data: {
-        totalPaid,
-        paidStatus:
-          totalPaid >= (await tx.poster.findUnique({ where: { id: posterId } }))!.monthlyRate
-            ? "PAID"
-            : totalPaid > 0
-              ? "PARTIAL"
-              : "UNPAID",
-      },
+      data: { totalPaid },
     });
 
     return [pay, p] as const;

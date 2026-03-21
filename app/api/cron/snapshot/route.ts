@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   for (const account of accounts) {
     try {
       const mediaData = await fetchJson<{ data?: MediaItem[] }>(
-        `/${account.id}/media`,
+        `/me/media`,
         account.accessToken,
         {
           fields:
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
       // Refresh username
       try {
         const profileRes = await fetch(
-          `https://graph.instagram.com/v25.0/${account.id}?fields=id,username&access_token=${account.accessToken}`,
+          `https://graph.instagram.com/v25.0/me?fields=id,username&access_token=${account.accessToken}`,
         );
         if (profileRes.ok) {
           const profile = (await profileRes.json()) as { username?: string };

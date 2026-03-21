@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthorized } from "@/lib/adminAuth";
+import { isAdminAuthorizedOrSecret } from "@/lib/adminAuth";
+import { syncBotCommandMenu } from "@/lib/telegram";
 
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthorized(req)) {
+  if (!isAdminAuthorizedOrSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -31,5 +32,16 @@ export async function POST(req: NextRequest) {
   });
 
   const data = await res.json();
-  return NextResponse.json({ webhookUrl, telegram: data });
+
+  let commands: { ok: boolean; details?: unknown[] } = { ok: false };
+  try {
+    commands = await syncBotCommandMenu();
+  } catch (e) {
+    commands = {
+      ok: false,
+      details: [{ error: e instanceof Error ? e.message : String(e) }],
+    };
+  }
+
+  return NextResponse.json({ webhookUrl, telegram: data, botCommands: commands });
 }

@@ -4,6 +4,72 @@ function apiBase() {
   return `https://api.telegram.org/bot${token}`;
 }
 
+/**
+ * Clears the bot command menu everywhere, then registers only /add, /paid, /remove for group chats.
+ * Run after deploy via POST /api/telegram/setup (admin) so Telegram’s menu matches the webhook.
+ */
+export async function syncBotCommandMenu(): Promise<{ ok: boolean; details: unknown[] }> {
+  const base = apiBase();
+  const details: unknown[] = [];
+
+  async function post(method: string, body: Record<string, unknown>) {
+    const res = await fetch(`${base}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    details.push({ method, body, data });
+    return data as { ok: boolean; description?: string };
+  }
+
+  const r1 = await post("deleteMyCommands", {});
+  const r2 = await post("deleteMyCommands", { scope: { type: "all_private_chats" } });
+  const r3 = await post("setMyCommands", {
+    scope: { type: "all_group_chats" },
+    commands: [
+      { command: "add", description: "Instagram link for this group" },
+      { command: "paid", description: "Record payment" },
+      { command: "remove", description: "Remove poster from list" },
+    ],
+  });
+
+  const ok = r1.ok && r2.ok && r3.ok;
+  return { ok, details };
+}
+
+/** Remove every slash-command from the bot menu (all scopes Telegram supports). */
+export async function clearAllBotCommands(): Promise<{ ok: boolean; details: unknown[] }> {
+  const base = apiBase();
+  const details: unknown[] = [];
+
+  async function post(method: string, body: Record<string, unknown>) {
+    const res = await fetch(`${base}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    details.push({ method, body, data });
+    return data as { ok: boolean; description?: string };
+  }
+
+  const scopes: Record<string, unknown>[] = [
+    {},
+    { scope: { type: "all_private_chats" } },
+    { scope: { type: "all_group_chats" } },
+    { scope: { type: "all_chat_administrators" } },
+  ];
+
+  let ok = true;
+  for (const body of scopes) {
+    const r = await post("deleteMyCommands", body);
+    if (!r.ok) ok = false;
+  }
+
+  return { ok, details };
+}
+
 export async function sendMessage(
   chatId: number | string,
   text: string,

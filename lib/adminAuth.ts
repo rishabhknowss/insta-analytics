@@ -29,6 +29,13 @@ export function isAdminAuthorized(req: NextRequest): boolean {
   return !!cookie && verifyAdminToken(cookie);
 }
 
+/** Cookie session or `x-admin-secret: ADMIN_SECRET` (for curl / scripts). */
+export function isAdminAuthorizedOrSecret(req: NextRequest): boolean {
+  if (isAdminAuthorized(req)) return true;
+  const secret = process.env.ADMIN_SECRET;
+  return !!secret && req.headers.get("x-admin-secret") === secret;
+}
+
 /** For server components / layouts */
 export async function getAdminSession(): Promise<boolean> {
   const store = await cookies();

@@ -17,11 +17,7 @@ export async function GET(_req: NextRequest) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    // Only request the two scopes this app actually uses
-    scope: [
-      "instagram_business_basic",
-      "instagram_business_manage_insights",
-    ].join(","),
+    scope: "instagram_business_basic",
   });
 
   const authUrl = `${INSTAGRAM_OAUTH_AUTHORIZE}?${params.toString()}`;

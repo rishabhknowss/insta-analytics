@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     let username: string | null = null;
     try {
       const profileRes = await fetch(
-        `https://graph.instagram.com/v25.0/${igUserId}?fields=id,username&access_token=${tokenData.access_token}`,
+        `https://graph.instagram.com/v25.0/me?fields=id,username&access_token=${tokenData.access_token}`,
       );
       const profileText = await profileRes.text();
       console.log("[callback] profile fetch:", profileRes.status, profileText.slice(0, 200));

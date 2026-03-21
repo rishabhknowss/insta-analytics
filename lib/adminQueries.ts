@@ -122,11 +122,10 @@ export type PosterRow = {
   channelName: string;
   groupLink: string;
   managedBy: string;
-  paidStatus: string;
-  monthlyRate: number;
   totalPaid: number;
-  remaining: number;
+  /** Filled from DB for API consumers; hidden on Manage page */
   totalViews: number;
+  /** Filled from DB for API consumers; hidden on Manage page */
   last24hViews: number;
   username: string | null;
   accountId: string | null;
@@ -170,11 +169,18 @@ async function autoLinkPosters() {
   }
 }
 
-export async function getPosterRows(): Promise<PosterRow[]> {
+const MANAGERS = ["ROHIT", "UJJWAL", "RISHABH"] as const;
+
+export async function getPosterRows(managerFilter?: string | null): Promise<PosterRow[]> {
   await autoLinkPosters();
 
+  const managerWhere =
+    managerFilter && MANAGERS.includes(managerFilter as (typeof MANAGERS)[number])
+      ? { managedBy: managerFilter as (typeof MANAGERS)[number] }
+      : {};
+
   const posters = await prisma.poster.findMany({
-    where: { disabled: false },
+    where: { disabled: false, ...managerWhere },
     include: {
       payments: { orderBy: { paidAt: "desc" } },
       account: {
@@ -227,10 +233,7 @@ export async function getPosterRows(): Promise<PosterRow[]> {
       channelName: p.channelName,
       groupLink: p.groupLink,
       managedBy: p.managedBy,
-      paidStatus: p.paidStatus,
-      monthlyRate: p.monthlyRate,
       totalPaid: p.totalPaid,
-      remaining: p.monthlyRate - p.totalPaid,
       totalViews: views?.totalViews ?? 0,
       last24hViews: views?.last24hViews ?? 0,
       username: p.account?.username ?? null,
