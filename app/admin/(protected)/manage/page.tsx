@@ -7,6 +7,7 @@ const MANAGER_COLORS: Record<string, string> = {
   ROHIT: "bg-violet-50 text-violet-700 border-violet-200",
   UJJWAL: "bg-amber-50 text-amber-700 border-amber-200",
   RISHABH: "bg-blue-50 text-blue-700 border-blue-200",
+  RONIN: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
 const FILTERS: { label: string; value: string | null }[] = [
@@ -14,6 +15,7 @@ const FILTERS: { label: string; value: string | null }[] = [
   { label: "Rohit", value: "ROHIT" },
   { label: "Ujjwal", value: "UJJWAL" },
   { label: "Rishabh", value: "RISHABH" },
+  { label: "Ronin", value: "RONIN" },
 ];
 
 function posterHandle(p: PosterRow) {
@@ -33,7 +35,7 @@ export default async function ManagePage({
   const sp = await searchParams;
   const managerKey = sp.manager?.toUpperCase() ?? null;
   const activeFilter =
-    managerKey && ["ROHIT", "UJJWAL", "RISHABH"].includes(managerKey) ? managerKey : null;
+    managerKey && ["ROHIT", "UJJWAL", "RISHABH", "RONIN"].includes(managerKey) ? managerKey : null;
 
   let posters: PosterRow[] = [];
   let error: string | null = null;
