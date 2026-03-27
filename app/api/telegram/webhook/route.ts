@@ -13,6 +13,7 @@ const TELEGRAM_ID_TO_MANAGER: Record<number, Manager> = {
   790457897: "ROHIT",
   1714837071: "UJJWAL",
   1336679662: "RISHABH",
+  1811618438: "RONIN",
 };
 
 function managerFromTelegramUserId(userId: number): Manager {

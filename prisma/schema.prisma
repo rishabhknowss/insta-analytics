@@ -60,6 +60,7 @@ enum Manager {
   ROHIT
   UJJWAL
   RISHABH
+  RONIN
 }
 
 model Poster {
