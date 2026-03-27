@@ -169,7 +169,7 @@ async function autoLinkPosters() {
   }
 }
 
-const MANAGERS = ["ROHIT", "UJJWAL", "RISHABH"] as const;
+const MANAGERS = ["ROHIT", "UJJWAL", "RISHABH", "RONIN"] as const;
 
 export async function getPosterRows(managerFilter?: string | null): Promise<PosterRow[]> {
   await autoLinkPosters();

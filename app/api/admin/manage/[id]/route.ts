@@ -18,7 +18,7 @@ export async function PATCH(
 
   const body = (await req.json()) as Record<string, unknown>;
 
-  const VALID_MANAGERS = ["ROHIT", "UJJWAL", "RISHABH"];
+  const VALID_MANAGERS = ["ROHIT", "UJJWAL", "RISHABH", "RONIN"];
 
   const updateData: Record<string, unknown> = {};
   if (typeof body.managedBy === "string" && VALID_MANAGERS.includes(body.managedBy))
